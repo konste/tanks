@@ -47,6 +47,8 @@ struct SwitchActions: Sendable {
         do {
             let liveText = try files.readText(live)
             let incomingText = try files.readText(incoming)
+            try FileManager.default.createDirectory(
+                atPath: (outgoing as NSString).deletingLastPathComponent, withIntermediateDirectories: true)
             try files.writeText(outgoing, liveText)
             try files.writeText(live, incomingText)
         } catch {
