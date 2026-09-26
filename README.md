@@ -30,3 +30,7 @@ which Command Line Tools do not ship; `swift test` runs only with Xcode installe
 
 OpenUsage's original README, provider docs and architecture notes are under [docs/](docs/); they
 describe the inherited code and remain accurate for the provider layer.
+
+## Upstream watch
+
+`.github/workflows/upstream_watch.yml` runs twice a week on GitHub and opens an assigned issue when robinebers/openusage publishes a stable release newer than `.upstream-release`. After rebasing the fork, set that file to the new tag; the issue closes itself on the next run.
