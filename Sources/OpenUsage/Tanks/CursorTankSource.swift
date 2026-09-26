@@ -10,6 +10,10 @@ actor CursorAdminFeed {
         var spendCents: Double
         var limitDollars: Double?
         var cycleStart: Date?
+        var totalPercent: Double?
+        var autoPercent: Double?
+        var apiPercent: Double?
+        var tier: String?
     }
 
     static let spendURL = URL(string: "https://api.cursor.com/teams/spend")!
@@ -73,7 +77,11 @@ actor CursorAdminFeed {
                 email: email,
                 spendCents: ProviderParse.number(row["spendCents"]) ?? 0,
                 limitDollars: limit.flatMap { $0 > 0 ? $0 : nil },
-                cycleStart: cycleStart
+                cycleStart: cycleStart,
+                totalPercent: ProviderParse.number(row["totalPercentUsed"]),
+                autoPercent: ProviderParse.number(row["autoPercentUsed"]),
+                apiPercent: ProviderParse.number(row["apiPercentUsed"]),
+                tier: row["billingTier"] as? String
             )
         }
     }
@@ -93,11 +101,27 @@ struct CursorTankSource: TankSource {
             throw TankSourceError.notSignedIn("\(account.email) is not on the team's spend list")
         }
         let cycleEnd = me.cycleStart.flatMap { Calendar.current.date(byAdding: .month, value: 1, to: $0) }
-        let month = Tank(
-            key: "month", label: "month", used: me.spendCents / 100, limit: me.limitDollars ?? 0,
-            format: .dollars, resetsAt: cycleEnd, periodSeconds: 30 * 86400,
-            note: me.limitDollars == nil ? "no per-user limit set" : nil
-        )
-        return AccountReading(account: account, plan: "Enterprise", tanks: [month], fetchedAt: now())
+        // The allowance is the percent fields: `totalPercentUsed` is the share of the seat's included
+        // monthly usage consumed, split into the auto-mode and API pools. Dollars are the paid line.
+        var tanks: [Tank] = []
+        if let total = me.totalPercent {
+            tanks.append(Tank(key: "month", label: "month", used: total, limit: 100, format: .percent,
+                              resetsAt: cycleEnd, periodSeconds: 30 * 86400))
+        }
+        if let auto = me.autoPercent {
+            tanks.append(Tank(key: "auto", label: "auto", used: auto, limit: 100, format: .percent,
+                              resetsAt: cycleEnd, periodSeconds: 30 * 86400))
+        }
+        if let api = me.apiPercent {
+            tanks.append(Tank(key: "api", label: "api", used: api, limit: 100, format: .percent,
+                              resetsAt: cycleEnd, periodSeconds: 30 * 86400))
+        }
+        tanks.append(Tank(
+            key: "spend", label: "spend", used: me.spendCents / 100, limit: me.limitDollars ?? 0,
+            format: .dollars, resetsAt: cycleEnd, periodSeconds: 30 * 86400, isPaid: true,
+            note: me.limitDollars == nil ? "no limit" : nil
+        ))
+        let plan = me.tier.map { $0.replacingOccurrences(of: "TIER_", with: "tier ") } ?? "Enterprise"
+        return AccountReading(account: account, plan: plan, tanks: tanks, fetchedAt: now())
     }
 }

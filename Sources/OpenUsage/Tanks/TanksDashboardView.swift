@@ -166,12 +166,12 @@ private struct VendorColumn: View {
         HStack {
             switch vendor {
             case .cursor:
-                let months = states.compactMap { $0.projections.first { $0.tank.key == "month" }?.tank }
-                let total = months.map(\.used).reduce(0, +)
-                let limit = months.first?.limit ?? 0
-                Text("team spend, both").foregroundStyle(palette.dim)
+                let spends = states.compactMap { $0.projections.first { $0.tank.key == "spend" }?.tank }
+                let total = spends.map(\.used).reduce(0, +)
+                let limit = spends.map(\.limit).reduce(0, +)
+                Text("spend this cycle, both").foregroundStyle(palette.dim)
                 Spacer()
-                Text(months.isEmpty ? "—" : "\(Fmt.dollars(total)) / \(limit > 0 ? Fmt.dollars(limit) : "no limit")").fontWeight(.semibold)
+                Text(spends.isEmpty ? "—" : "\(Fmt.dollars(total))\(limit > 0 ? " / \(Fmt.dollars(limit))" : "")").fontWeight(.semibold)
             default:
                 if let paid {
                     Text(paid.tank.label).foregroundStyle(palette.dim)

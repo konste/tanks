@@ -93,7 +93,7 @@ enum AppLog {
         // and the startup line actually self-documents where the log lives.
         let displayPath = (LogFile.url.path as NSString).abbreviatingWithTildeInPath
         info(LogTag.config.rawValue,
-             "OpenUsage v\(AppInfo.version) starting (level=\(level.rawValue), log=\(displayPath))")
+             "Tanks v\(AppInfo.version) starting (level=\(level.rawValue), log=\(displayPath))")
     }
 
     /// Re-read the persisted level into the cache. Invoked from the Settings picker `.onChange` so a

@@ -126,7 +126,7 @@ enum Advisor {
     /// on its own).
     private static func spareCapacity(_ assessments: [AccountAssessment]) -> [Advice] {
         assessments.compactMap { assessment in
-            let candidates = assessment.projections.filter { !$0.tank.isPaid && $0.tank.periodSeconds ?? 0 >= 6 * 3600 }
+            let candidates = assessment.projections.filter { !$0.tank.isPaid && $0.tank.limit > 0 && $0.tank.periodSeconds ?? 0 >= 6 * 3600 }
             guard let longest = candidates.max(by: { ($0.tank.periodSeconds ?? 0) < ($1.tank.periodSeconds ?? 0) }),
                   let projectedFill = longest.projectedFill ?? (longest.ratePerHour == nil ? Optional(longest.fill) : nil),
                   1 - projectedFill > spareCapacity,

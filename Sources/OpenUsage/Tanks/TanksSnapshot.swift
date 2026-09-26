@@ -92,11 +92,17 @@ enum TanksSnapshot {
         ], fetchedAt: now)
         let codexS = AccountReading(account: acct(.codex, .secondary), plan: nil, tanks: [], fetchedAt: now,
                                     status: .signedOut(reason: "run: CODEX_HOME=~/.codex-tanks/secondary codex login"))
-        let cursorP = AccountReading(account: acct(.cursor, .primary), plan: "Enterprise", tanks: [
-            Tank(key: "month", label: "month", used: 18.42, limit: 100, format: .dollars, resetsAt: in12d, periodSeconds: 30 * 86400),
-        ], byModel: [("opus", 9.12), ("sonnet", 6.30), ("gpt-5", 3.00)], fetchedAt: now)
-        let cursorS = AccountReading(account: acct(.cursor, .secondary), plan: "Enterprise", tanks: [
-            Tank(key: "month", label: "month", used: 2.05, limit: 100, format: .dollars, resetsAt: in12d, periodSeconds: 30 * 86400),
+        let cursorP = AccountReading(account: acct(.cursor, .primary), plan: "tier 2000", tanks: [
+            Tank(key: "month", label: "month", used: 15, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
+            Tank(key: "auto", label: "auto", used: 13, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
+            Tank(key: "api", label: "api", used: 25, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
+            Tank(key: "spend", label: "spend", used: 129.42, limit: 0, format: .dollars, isPaid: true, note: "no limit"),
+        ], fetchedAt: now)
+        let cursorS = AccountReading(account: acct(.cursor, .secondary), plan: "tier 2000", tanks: [
+            Tank(key: "month", label: "month", used: 51, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
+            Tank(key: "auto", label: "auto", used: 57, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
+            Tank(key: "api", label: "api", used: 21, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
+            Tank(key: "spend", label: "spend", used: 713.58, limit: 0, format: .dollars, isPaid: true, note: "no limit"),
         ], fetchedAt: now)
         return [claudeP0, claudeP, claudeS, codexP0, codexP, codexS, cursorP, cursorS]
     }
