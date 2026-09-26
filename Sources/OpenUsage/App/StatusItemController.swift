@@ -1,5 +1,4 @@
 import AppKit
-import KeyboardShortcuts
 import SwiftUI
 
 /// The dashboard's host window: a borderless, **non-activating** panel that can still become key.
@@ -107,12 +106,6 @@ final class StatusItemController: NSObject {
                 self?.panel.appearance = AppearanceSetting.current.nsAppearance
             }
         }
-        // Registered once here; the controller lives for the app's whole life.
-        KeyboardShortcuts.onKeyUp(for: .togglePopover) { [weak self] in
-            AppLog.info(.statusItem, "Global shortcut fired; toggling popover")
-            self?.togglePopover()
-        }
-
         // Esc on the dashboard dismisses through the same code path as a status-item click.
         MenuBarPopover.dismissHandler = { [weak self] in
             self?.hidePanel()
@@ -124,7 +117,7 @@ final class StatusItemController: NSObject {
 
         heightController.installBridge()
 
-        AppLog.info(.statusItem, "Status item ready (button: \(self.statusItem.button != nil), shortcut: \(KeyboardShortcuts.getShortcut(for: .togglePopover)?.description ?? "none"))")
+        AppLog.info(.statusItem, "Status item ready (button: \(self.statusItem.button != nil))")
     }
 
     // MARK: - Panel configuration
@@ -361,8 +354,7 @@ final class StatusItemController: NSObject {
     /// close otherwise never does. Skips a live text field / shortcut recorder, whose focus is the
     /// user's intent — mirrors the `NSText` guard `PopoverKeyReader` uses for the same reason.
     private func clearStrayFocus() {
-        guard !ShortcutRecorderField.isRecordingActive,
-              !(panel.firstResponder is NSText) else { return }
+        guard !(panel.firstResponder is NSText) else { return }
         panel.makeFirstResponder(nil)
     }
 

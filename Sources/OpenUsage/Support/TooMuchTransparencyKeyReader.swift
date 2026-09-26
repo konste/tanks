@@ -50,7 +50,7 @@ struct TooMuchTransparencyKeyReader: NSViewRepresentable {
                     guard PopoverKeyReader.keyTargetsPopover(
                         eventWindowID: eventWindowID,
                         popoverWindowID: ObjectIdentifier(window)
-                    ), !(window.firstResponder is NSText), !ShortcutRecorderField.isRecordingActive else {
+                    ), !(window.firstResponder is NSText) else {
                         return
                     }
                     guard let token = Self.token(keyCode: keyCode, characters: characters) else {

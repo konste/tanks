@@ -1,6 +1,5 @@
 import AppKit
 import Combine
-import KeyboardShortcuts
 import SwiftUI
 import UserNotifications
 
@@ -34,10 +33,6 @@ struct SettingsScreen: View {
     /// Gates the destructive Reset All Settings action behind a confirmation alert. Settings remains
     /// mounted after its first visit, so leaving the screen must explicitly dismiss a pending alert.
     @State private var isPresentingResetConfirm = false
-    /// Remounts `ShortcutRecorderField` after a reset. The field seeds its chip from the
-    /// KeyboardShortcuts store only on appear (the store isn't observable), so without a fresh
-    /// identity the still-mounted Settings screen would keep showing the cleared shortcut.
-    @State private var shortcutFieldGeneration = 0
     /// Settings stays mounted between visits, so explicitly restore its previous scroll-to-top behavior.
     @State private var scrollPosition = ScrollPosition(edge: .top)
 
@@ -108,12 +103,6 @@ struct SettingsScreen: View {
             }
             if let launchAtLoginError = launchAtLogin.errorMessage {
                 inlineNotice(launchAtLoginError)
-            }
-            // Click-to-record field; its ⓧ clears the combo and disables the shortcut.
-            row("Global Shortcut") {
-                ShortcutRecorderField(name: .togglePopover, isVisible: layout.screen == .settings)
-                    .id(shortcutFieldGeneration)
-                    .hoverTooltip("Open OpenUsage from anywhere")
             }
         }
     }
@@ -453,7 +442,6 @@ struct SettingsScreen: View {
                     withAnimation(Motion.spring) { container.resetAllSettings() }
                     launchAtLogin.update(to: false)
                     updater.resetToDefaults()
-                    shortcutFieldGeneration += 1
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {

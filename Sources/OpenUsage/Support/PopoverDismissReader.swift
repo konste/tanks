@@ -121,7 +121,7 @@ struct PopoverKeyReader: NSViewRepresentable {
                     ) else { return false }
                     // A text control is editing, or the Settings shortcut recorder is capturing a
                     // combo: the key belongs to it (insert / cancel / record), not to popover nav.
-                    if window.firstResponder is NSText || ShortcutRecorderField.isRecordingActive {
+                    if window.firstResponder is NSText {
                         return false
                     }
                     if isComma {

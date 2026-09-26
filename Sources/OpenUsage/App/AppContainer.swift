@@ -1,5 +1,4 @@
 import Foundation
-import KeyboardShortcuts
 import Observation
 
 /// Composition root: owns the (constant) registry and the (mutable) stores, injected
@@ -180,7 +179,7 @@ final class AppContainer {
         // the current configuration.
         let telemetryStore = TelemetryStore()
         let telemetry = TelemetryRecorder(
-            sink: PostHogTelemetrySink(enabled: telemetryStore.enabled),
+            sink: NoopTelemetrySink(enabled: telemetryStore.enabled),
             store: telemetryStore,
             snapshot: { [registry, enablement, layout] in
                 // Report the *active* configuration: a metric whose provider is turned off is hidden
@@ -266,7 +265,6 @@ final class AppContainer {
         ] {
             UserDefaults.standard.removeObject(forKey: key)
         }
-        KeyboardShortcuts.reset(.togglePopover)
         AppearanceSetting.applyCurrent()
         AppLog.reloadLevel()
         AppLog.info(.config, "All settings reset to defaults")
