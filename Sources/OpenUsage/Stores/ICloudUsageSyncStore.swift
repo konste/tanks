@@ -116,7 +116,7 @@ actor ICloudUsageHistoryFileStore: UsageHistoryFileStoring {
             throw ICloudUsageSyncError.unavailable
         }
         let directory = container
-            .appendingPathComponent("OpenUsage", isDirectory: true)
+            .appendingPathComponent("Tanks", isDirectory: true)
             .appendingPathComponent("History", isDirectory: true)
             .appendingPathComponent("v1", isDirectory: true)
         if create {

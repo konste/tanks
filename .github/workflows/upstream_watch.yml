@@ -1,0 +1,45 @@
+# Opens an issue in this fork when robinebers/openusage publishes a stable release newer than the
+# one recorded in .upstream-release, and assigns it, so the reminder arrives as a GitHub
+# notification. Bump .upstream-release after rebasing the fork; the issue closes itself on the
+# next run once the file matches.
+name: upstream watch
+
+on:
+  schedule:
+    - cron: "17 16 * * 1,4" # Mon and Thu 09:17 PDT
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM: robinebers/openusage
+      ASSIGNEE: konste
+    steps:
+      - uses: actions/checkout@v4
+      - name: compare latest stable release with .upstream-release
+        run: |
+          set -euo pipefail
+          latest="$(gh api "repos/$UPSTREAM/releases/latest" --jq .tag_name)"
+          recorded="$(tr -d '[:space:]' < .upstream-release)"
+          title="Upstream OpenUsage $latest released — update the fork"
+          open_issue="$(gh issue list --repo "$GITHUB_REPOSITORY" --search "in:title \"Upstream OpenUsage\"" --state open --json number,title --jq '.[0]')"
+          echo "latest=$latest recorded=$recorded"
+          if [ "$latest" = "$recorded" ]; then
+            if [ -n "$open_issue" ]; then
+              n="$(echo "$open_issue" | jq -r .number)"
+              gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "Fork now records $latest — closing."
+            fi
+            exit 0
+          fi
+          if [ -n "$open_issue" ] && [ "$(echo "$open_issue" | jq -r .title)" = "$title" ]; then
+            echo "issue already open"; exit 0
+          fi
+          notes_url="https://github.com/$UPSTREAM/releases/tag/$latest"
+          body="$(printf 'Upstream published **%s** (%s).\n\nThis fork last synced at upstream release **%s** (see `.upstream-release`).\n\nTo update: fetch `upstream`, rebase branch `tanks` onto `upstream/main`, rebuild with `script/build_and_run.sh`, then set `.upstream-release` to `%s`. This issue closes itself on the next scheduled run once the file matches.' "$latest" "$notes_url" "$recorded" "$latest")"
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body" --assignee "$ASSIGNEE"

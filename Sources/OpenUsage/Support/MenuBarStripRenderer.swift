@@ -123,7 +123,7 @@ enum MenuBarStripRenderer {
     static let fallbackIcon: NSImage = {
         let image = NSImage(
             systemSymbolName: "gauge.with.dots.needle.bottom.50percent",
-            accessibilityDescription: "OpenUsage"
+            accessibilityDescription: "Tanks"
         ) ?? NSImage()
         image.isTemplate = true
         return image
@@ -143,7 +143,7 @@ private struct MenuBarPrivacyLabel: View {
                     .fill(Color.black)
                     .frame(width: 16, height: 16)
             }
-            Text("OpenUsage")
+            Text("Tanks")
                 .font(.system(size: 12, weight: .bold))
         }
         .foregroundStyle(.black)

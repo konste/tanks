@@ -17,7 +17,7 @@ final class LogFile: @unchecked Sendable {
     /// `~/Library/Logs/OpenUsage/OpenUsage.log` via `FileManager`, never hardcoded from `$HOME`; the
     /// `Logs/OpenUsage` subfolder is a literal (not bundle-id-keyed), so the dev and release builds
     /// agree on the same file — acceptable since they are separate builds.
-    static let shared = LogFile(directory: defaultDirectory(), fileName: "OpenUsage.log")
+    static let shared = LogFile(directory: defaultDirectory(), fileName: "Tanks.log")
 
     /// The advertised log path (logged at startup, copied/revealed from Settings). Derived from the
     /// shared sink so the path shown to the user always equals where logs are actually written.
@@ -31,7 +31,7 @@ final class LogFile: @unchecked Sendable {
     private let archiveURL: URL
     private let directory: URL
     private let maxBytes: Int
-    private let fallbackLogger = Logger(subsystem: "OpenUsage", category: "logfile")
+    private let fallbackLogger = Logger(subsystem: "Tanks", category: "logfile")
 
     private let lock = NSLock()
     private var handle: FileHandle?
@@ -59,7 +59,7 @@ final class LogFile: @unchecked Sendable {
         // ever returned empty in an unusual container. A non-ideal-but-valid directory keeps the app alive.
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        return library.appendingPathComponent("Logs/OpenUsage", isDirectory: true)
+        return library.appendingPathComponent("Logs/Tanks", isDirectory: true)
     }
 
     /// Create the directory and file, seed the in-memory size from disk, and perform the launch-time
