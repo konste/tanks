@@ -76,7 +76,7 @@ Recommendations expire when their condition clears; a dismissed one stays quiet 
 - Claude: button runs `acc admin` / `acc konstantin` (existing tool, Touch ID gate, relaunches
   the app and rearms Remote Control). Tanks never holds the gate itself.
 - Codex: swap `~/.codex/auth.json` with the parked copy, verify with `codex login status`
-  (binary at `~/.codex/plugins/.plugin-appserver/codex`). The ChatGPT desktop app shares that
+  (binary at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`). The ChatGPT desktop app shares that
   file; whether it needs a restart is the first thing to test.
 - Cursor: no supported swap. Recommended: a second Cursor instance with its own `--user-data-dir`
   signed in as admin; Tanks then says which one to use. Column shows "manual" until then.

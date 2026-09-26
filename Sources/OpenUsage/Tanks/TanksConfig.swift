@@ -28,7 +28,7 @@ struct TanksConfig: Sendable, Codable {
     /// Tanks' own copies of `auth.json`, one per account; the one whose email is not in the live
     /// file is the parked account. Created by `codex login` under `CODEX_HOME=<dir>`.
     var codexParkedAuthDir = "~/.codex-tanks"
-    var codexBinary = "~/.codex/plugins/.plugin-appserver/codex"
+    var codexBinary = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex"
 
     /// Cursor Admin API key (Enterprise): keychain generic password, account = the macOS user.
     var cursorAdminKeyKeychainService = "tanks-cursor-admin-key"
