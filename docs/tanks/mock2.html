@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tanks — panel v2</title>
+<style>
+  body { margin: 0; background: #555; color: #eee; padding: 24px;
+         font: 13px/1.3 -apple-system, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  h2 { font-size: 14px; margin: 26px 0 8px; color: #ddd; font-weight: 600; }
+  h2:first-child { margin-top: 0; }
+
+  .panel {
+    --bg: #262628; --bg2: #2f2f32; --line: #3d3d41; --fg: #f2f2f4; --dim: #a0a0a8; --dim2: #70707a;
+    --track: #3a3a3f; --green: #34c759; --amber: #ffb340; --red: #ff5b4d; --blue: #6f8fbf; --violet: #b48cff;
+    --claude: #e08a6a; --codex: #74c3a1; --cursor: #8ab4f8; --pill-bg: #2f5d3a; --pill-fg: #9be6ad;
+    --hatch: rgba(255,255,255,.35); --shadow: 0 12px 40px rgba(0,0,0,.6); --link: #7fb2ff;
+    --alert-bg: #3a2a2a;
+    width: 780px; background: var(--bg); color: var(--fg); border-radius: 12px; border: 1px solid var(--line);
+    box-shadow: var(--shadow); overflow: hidden; font-variant-numeric: tabular-nums;
+  }
+  .panel.light {
+    --bg: #f6f6f8; --bg2: #ececf0; --line: #d8d8de; --fg: #1d1d21; --dim: #5d5d66; --dim2: #8a8a94;
+    --track: #dcdce2; --green: #28b14c; --amber: #e69a00; --red: #e5443a; --blue: #7d9bd0; --violet: #8d5cff;
+    --claude: #c9633f; --codex: #2e8f66; --cursor: #3b6fd6; --pill-bg: #d9f2df; --pill-fg: #1f6b35;
+    --hatch: rgba(0,0,0,.28); --shadow: 0 12px 40px rgba(0,0,0,.25); --link: #2f6fd8;
+    --alert-bg: #fbe4e1;
+  }
+  .hd { display: flex; align-items: center; padding: 9px 14px 7px; gap: 10px; border-bottom: 1px solid var(--line); }
+  .hd .title { font-weight: 700; font-size: 14px; }
+  .hd .meta { margin-left: auto; color: var(--dim); font-size: 11.5px; }
+  .advice { padding: 7px 14px; background: var(--bg2); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; }
+  .advice.alert { background: var(--alert-bg); }
+  .a { display: flex; gap: 8px; align-items: center; font-size: 12.5px; }
+  .a .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .a .txt { flex: 1; }
+  .a .txt small { color: var(--dim); margin-left: 6px; }
+  .btn { background: #3f6fd8; color: #fff; border: 0; border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .btn.red { background: #d8453a; }
+  .btn.ghost { background: transparent; color: var(--link); border: 1px solid var(--link); }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+  .col { padding: 8px 12px 6px; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .col:last-child { border-right: 0; }
+  .vn { font-weight: 700; font-size: 12px; letter-spacing: .05em; margin-bottom: 4px; }
+  .acct { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--dim); margin: 6px 0 2px; }
+  .acct.on { color: var(--fg); }
+  .pill { font-size: 9.5px; padding: 1px 5px; border-radius: 4px; background: var(--pill-bg); color: var(--pill-fg); font-weight: 600; letter-spacing: .04em; }
+  .sw { margin-left: auto; font-size: 10.5px; color: var(--link); }
+  .w { display: grid; grid-template-columns: 40px 1fr 38px; gap: 8px; align-items: center; padding: 2px 0; }
+  .w .lbl { color: var(--dim); font-size: 11px; }
+  .w .pct { text-align: right; font-weight: 600; font-size: 11.5px; }
+  .w .pct.money { font-size: 10.5px; }
+  .bar { position: relative; height: 11px; background: var(--track); border-radius: 3px; }
+  .bar .used { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px 0 0 3px; background: var(--green); }
+  .bar .proj { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, var(--hatch) 0 3px, transparent 3px 6px); border-radius: 0 3px 3px 0; }
+  .bar .over { position: absolute; right: -2px; top: -2px; bottom: -2px; width: 3px; background: var(--red); border-radius: 2px; }
+  .bar.amber .used { background: var(--amber); } .bar.red .used { background: var(--red); } .bar.idle .used { background: var(--blue); }
+  .sub { grid-column: 2 / 4; display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dim); margin-top: -3px; white-space: nowrap; }
+  .sub .warn { color: var(--amber); } .sub .bad { color: var(--red); }
+  .paid { margin-top: auto; padding-top: 5px; padding-top: 5px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--dim); display: flex; justify-content: space-between; }
+  .paid b { color: var(--fg); font-weight: 600; }
+  .ft { padding: 5px 14px; display: flex; gap: 14px; font-size: 11px; color: var(--dim); border-top: 1px solid var(--line); }
+  .ft .sp { flex: 1; }
+  .models { font-size: 10.5px; color: var(--dim); display: flex; gap: 10px; padding: 1px 0 2px 48px; }
+  .models b { color: var(--fg); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h2>Dark (system appearance dark) — normal state · 780 × ~400</h2>
+<div class="panel" id="p1">
+  <div class="hd"><span class="title">Tanks</span><span class="meta">13:22:40 · polls every 60 s · all six accounts fresh</span></div>
+  <div class="advice">
+    <div class="a"><span class="dot" style="background:var(--amber)"></span><span class="txt">Claude / konstantin 5-hour runs dry ~14:10, reset 15:30 — admin 5-hour is at 12%.<small>burn 31 %/h over 40 min</small></span><button class="btn ghost">Switch at 90%</button></div>
+    <div class="a"><span class="dot" style="background:var(--green)"></span><span class="txt">Cursor is at $41 of its $285 limit with 16 days left — spare capacity for review-type work.</span></div>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <div class="vn" style="color:var(--claude)">CLAUDE</div>
+      <div class="acct on">konstantin <span class="pill">ACTIVE</span></div>
+      <div class="w"><span class="lbl">5-hour</span><div class="bar amber"><div class="used" style="width:78%"></div><div class="proj" style="left:78%;width:22%"></div><div class="over"></div></div><span class="pct">78%</span>
+        <div class="sub"><span class="warn">100% at 14:10</span><span>↺ 15:30</span></div></div>
+      <div class="w"><span class="lbl">week</span><div class="bar"><div class="used" style="width:44%"></div><div class="proj" style="left:44%;width:26%"></div></div><span class="pct">44%</span>
+        <div class="sub"><span>→ 70% at reset</span><span>↺ Sat 07:00</span></div></div>
+      <div class="w"><span class="lbl">Fable</span><div class="bar"><div class="used" style="width:12%"></div></div><span class="pct">12%</span>
+        <div class="sub"><span>of the 50% share</span><span></span></div></div>
+      <div class="acct">admin <span class="sw">switch ⌘1</span></div>
+      <div class="w"><span class="lbl">5-hour</span><div class="bar idle"><div class="used" style="width:12%"></div></div><span class="pct">12%</span>
+        <div class="sub"><span></span><span>↺ 16:45</span></div></div>
+      <div class="w"><span class="lbl">week</span><div class="bar idle"><div class="used" style="width:38%"></div><div class="proj" style="left:38%;width:4%"></div></div><span class="pct">38%</span>
+        <div class="sub"><span>→ 42%</span><span>↺ Sat 07:00</span></div></div>
+      <div class="w"><span class="lbl">Fable</span><div class="bar idle"><div class="used" style="width:31%"></div></div><span class="pct">31%</span></div>
+      <div class="paid"><span>credits (paid)</span><b>$1,516 / $3,000</b></div>
+    </div>
+
+    <div class="col">
+      <div class="vn" style="color:var(--codex)">CODEX</div>
+      <div class="acct on">konstantin <span class="pill">ACTIVE</span></div>
+      <div class="w"><span class="lbl">5-hour</span><div class="bar"><div class="used" style="width:41%"></div><div class="proj" style="left:41%;width:9%"></div></div><span class="pct">41%</span>
+        <div class="sub"><span>→ 50%</span><span>↺ 17:50</span></div></div>
+      <div class="w"><span class="lbl">month</span><div class="bar red"><div class="used" style="width:99%"></div><div class="over"></div></div><span class="pct">99%</span>
+        <div class="sub"><span class="bad">spend control exhausted</span><span>↺ Oct 1</span></div></div>
+      <div class="acct">admin <span class="sw">switch ⌘2</span></div>
+      <div class="w"><span class="lbl">5-hour</span><div class="bar idle"><div class="used" style="width:0%"></div></div><span class="pct">0%</span>
+        <div class="sub"><span>idle</span><span></span></div></div>
+      <div class="w"><span class="lbl">month</span><div class="bar idle"><div class="used" style="width:9%"></div></div><span class="pct">9%</span>
+        <div class="sub"><span></span><span>↺ Oct 1</span></div></div>
+      <div class="paid"><span>flex credits</span><b>none</b></div>
+    </div>
+
+    <div class="col">
+      <div class="vn" style="color:var(--cursor)">CURSOR</div>
+      <div class="acct on">konstantin <span class="pill">ACTIVE</span></div>
+      <div class="w"><span class="lbl">month</span><div class="bar"><div class="used" style="width:14%"></div><div class="proj" style="left:14%;width:5%"></div></div><span class="pct money">$41</span>
+        <div class="sub"><span>→ $55 of $285</span><span>↺ Oct 12</span></div></div>
+      <div class="models"><span>Opus 5.5 <b>$24</b></span><span>Sonnet <b>$11</b></span><span>Auto <b>$6</b></span></div>
+      <div class="acct">admin <span class="sw">manual</span></div>
+      <div class="w"><span class="lbl">month</span><div class="bar idle"><div class="used" style="width:5%"></div></div><span class="pct money">$13</span>
+        <div class="sub"><span>of $285</span><span>↺ Oct 3</span></div></div>
+      <div class="models"><span>Opus 5.5 <b>$9</b></span><span>Auto <b>$4</b></span></div>
+      <div class="paid"><span>team spend, both</span><b>$54 / $285</b></div>
+    </div>
+  </div>
+  <div class="ft"><span>⌘R refresh</span><span>settings</span><span class="sp"></span><span>solid = used · hatched = projected by reset · red tick = crosses 100% first · blue = not signed in</span></div>
+</div>
+
+<h2>Light (system appearance light) — same state</h2>
+<div class="panel light" id="p2"></div>
+
+<h2>Dark — attention state</h2>
+<div class="panel" id="p3"></div>
+
+<script>
+  // p2 and p3 are copies of p1 with the differing pieces swapped, so the three stay in sync.
+  const p1 = document.getElementById('p1');
+  const p2 = document.getElementById('p2'); p2.innerHTML = p1.innerHTML;
+  const p3 = document.getElementById('p3'); p3.innerHTML = p1.innerHTML;
+  p3.querySelector('.hd .meta').textContent = '14:05:12 · polls every 60 s · all six accounts fresh';
+  const adv = p3.querySelector('.advice'); adv.classList.add('alert');
+  adv.innerHTML =
+    '<div class="a"><span class="dot" style="background:var(--red)"></span><span class="txt"><b>Switch Claude to admin now.</b> konstantin 5-hour is 91%, reaches 100% at 14:22, reset 15:30; past 100% every turn bills credits.<small>admin: 5-hour 12%, week 38%</small></span><button class="btn red">Switch → admin</button></div>' +
+    '<div class="a"><span class="dot" style="background:var(--amber)"></span><span class="txt">Codex monthly spend control is exhausted (99%, resets Oct 1) — admin is at 9%.</span><button class="btn ghost">Switch → admin</button></div>';
+  const first = p3.querySelector('.col .w');
+  first.querySelector('.bar').className = 'bar red';
+  first.querySelector('.used').style.width = '91%';
+  first.querySelector('.proj').style.left = '91%'; first.querySelector('.proj').style.width = '9%';
+  first.querySelector('.pct').textContent = '91%';
+  first.querySelector('.sub .warn').textContent = '100% at 14:22'; first.querySelector('.sub .warn').className = 'bad';
+</script>
+</body>
+</html>

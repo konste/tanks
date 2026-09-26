@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tanks — mockups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #1c1c1e; --panel: #2a2a2d; --panel2: #323235; --line: #3d3d41;
+    --fg: #f2f2f4; --dim: #9a9aa2; --dim2: #6c6c74;
+    --green: #34c759; --amber: #ffb340; --red: #ff5b4d; --blue: #5aa9ff; --violet: #b48cff;
+    --claude: #d97757; --codex: #74c3a1; --cursor: #8ab4f8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0e0e10; color: var(--fg);
+         font: 13px/1.35 -apple-system, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+         padding: 28px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; font-weight: 600; }
+  h2 { font-size: 15px; margin: 34px 0 10px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  p.note { color: var(--dim); max-width: 760px; margin: 0 0 10px; }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .cap { color: var(--dim); font-size: 12px; margin-top: 6px; max-width: 420px; }
+
+  /* ---- menu bar strip ---- */
+  .menubar { background: linear-gradient(#3a3a3e, #2c2c30); border-radius: 8px; padding: 0 10px;
+             height: 30px; display: flex; align-items: center; gap: 14px; width: 560px;
+             box-shadow: 0 2px 10px rgba(0,0,0,.5); font-size: 13px; }
+  .menubar .sp { flex: 1; }
+  .menubar .sys { color: var(--dim); display: flex; gap: 14px; }
+  .mbitem { display: flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 5px; }
+  .mbitem.active { background: rgba(255,255,255,.14); }
+  .mbitem.alert { background: rgba(255,91,77,.22); color: #ffb3ab; }
+  .tanks { display: flex; gap: 2px; align-items: flex-end; height: 14px; }
+  .tank { width: 5px; background: #55555b; border-radius: 1px; position: relative; overflow: hidden; height: 14px; }
+  .tank i { position: absolute; left: 0; right: 0; bottom: 0; display: block; }
+  .mbtext { font-variant-numeric: tabular-nums; }
+  .mbtext b { font-weight: 600; }
+
+  /* ---- popover panel ---- */
+  .panel { width: 430px; background: var(--panel); border-radius: 12px; border: 1px solid var(--line);
+           box-shadow: 0 12px 40px rgba(0,0,0,.6); overflow: hidden; }
+  .panel .hd { display: flex; align-items: center; padding: 10px 14px 8px; gap: 8px; border-bottom: 1px solid var(--line); }
+  .panel .hd .title { font-weight: 700; font-size: 14px; }
+  .panel .hd .meta { margin-left: auto; color: var(--dim); font-size: 11.5px; }
+  .advice { padding: 8px 14px 10px; background: var(--panel2); border-bottom: 1px solid var(--line); }
+  .advice .a { display: flex; gap: 8px; align-items: flex-start; padding: 4px 0; font-size: 12.5px; }
+  .advice .a .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: none; }
+  .advice .a .txt { flex: 1; }
+  .advice .a .txt small { color: var(--dim); display: block; }
+  .btn { background: #3f6fd8; color: #fff; border: 0; border-radius: 6px; padding: 4px 9px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .btn.red { background: #d8453a; }
+  .btn.ghost { background: transparent; color: var(--blue); border: 1px solid #3f6fd8; }
+  .vendor { padding: 8px 14px 6px; border-bottom: 1px solid var(--line); }
+  .vendor .vh { display: grid; grid-template-columns: 62px 1fr 1fr; gap: 10px; align-items: baseline; margin-bottom: 4px; }
+  .vendor .vh .vn { font-weight: 700; font-size: 12px; letter-spacing: .04em; }
+  .vendor .vh .acct { font-size: 11.5px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  .vendor .vh .acct.on { color: var(--fg); }
+  .vendor .vh .acct .pill { font-size: 9.5px; padding: 1px 5px; border-radius: 4px; background: #2f5d3a; color: #9be6ad; font-weight: 600; letter-spacing: .04em; }
+  .vendor .vh .acct .sw { margin-left: auto; font-size: 10.5px; color: var(--blue); }
+  .line { display: grid; grid-template-columns: 62px 1fr 1fr; gap: 10px; align-items: center; padding: 3px 0; }
+  .line .lbl { color: var(--dim); font-size: 11.5px; }
+  .line .lbl small { display: block; color: var(--dim2); font-size: 10px; }
+  .bar { position: relative; height: 12px; background: #3a3a3f; border-radius: 3px; overflow: visible; }
+  .bar .used { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px 0 0 3px; background: var(--green); }
+  .bar .proj { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(255,255,255,.35) 0 3px, transparent 3px 6px); border-radius: 0 3px 3px 0; }
+  .bar .cap { display: none; }
+  .bar .over { position: absolute; right: -2px; top: -2px; bottom: -2px; width: 3px; background: var(--red); border-radius: 2px; }
+  .bar.amber .used { background: var(--amber); } .bar.red .used { background: var(--red); }
+  .bar.idle .used { background: #6f8fbf; }
+  .val { display: flex; justify-content: space-between; gap: 6px; font-size: 10.5px; color: var(--dim); margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+  .val.wrap { white-space: normal; flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; }
+  .val b { color: var(--fg); font-weight: 600; }
+  .val .warn { color: var(--amber); } .val .bad { color: var(--red); }
+  .cell { min-width: 0; }
+  .ft { padding: 7px 14px; display: flex; gap: 12px; font-size: 11px; color: var(--dim); align-items: center; }
+  .ft .sp { flex: 1; }
+  .paid { padding: 6px 14px 8px; border-bottom: 1px solid var(--line); }
+  .paid .line { grid-template-columns: 62px 1fr; }
+  .paid .bar .used { background: var(--violet); }
+  .kbd { font: 10.5px ui-monospace, Menlo, monospace; color: var(--dim2); }
+  .legend { display: flex; gap: 16px; color: var(--dim); font-size: 12px; margin: 10px 0 0; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw1 { width: 22px; height: 10px; border-radius: 2px; background: var(--green); display: inline-block; }
+  .sw2 { width: 22px; height: 10px; border-radius: 2px; background: repeating-linear-gradient(135deg, rgba(255,255,255,.45) 0 3px, #3a3a3f 3px 6px); display: inline-block; }
+  .sw3 { width: 3px; height: 12px; background: var(--red); display: inline-block; border-radius: 2px; }
+  .sw4 { width: 22px; height: 10px; border-radius: 2px; background: #6f8fbf; display: inline-block; }
+</style>
+</head>
+<body>
+<h1>Tanks — mockups</h1>
+<p class="note">Three vendors × two accounts, every allowance window as a horizontal tank. Solid = used so far; hatched = projected further use by the reset at the current burn rate; a red tick at the right edge = the projection crosses 100% before the reset. Blue bar = the account that is not signed in right now (its numbers still update).</p>
+
+<h2>1 · Menu bar — compact form (three variants)</h2>
+<div class="row">
+  <div>
+    <div class="menubar">
+      <span style="color:var(--dim)">Finder</span><span style="color:var(--dim)">File</span><span style="color:var(--dim)">Edit</span>
+      <span class="sp"></span>
+      <div class="mbitem">
+        <div class="tanks">
+          <div class="tank"><i style="height:78%;background:var(--amber)"></i></div>
+          <div class="tank"><i style="height:41%;background:var(--green)"></i></div>
+          <div class="tank"><i style="height:68%;background:var(--green)"></i></div>
+        </div>
+      </div>
+      <div class="sys"><span>◐</span><span>Fri 13:22</span></div>
+    </div>
+    <div class="cap"><b>A — glyph only.</b> Three tanks, one per vendor, showing the signed-in account's most binding window (the window with the least time-to-empty). Colour = state. Nothing to read; 22 px wide.</div>
+  </div>
+</div>
+<div class="row" style="margin-top:18px">
+  <div>
+    <div class="menubar">
+      <span style="color:var(--dim)">Finder</span><span style="color:var(--dim)">File</span><span style="color:var(--dim)">Edit</span>
+      <span class="sp"></span>
+      <div class="mbitem active">
+        <div class="tanks">
+          <div class="tank"><i style="height:78%;background:var(--amber)"></i></div>
+          <div class="tank"><i style="height:41%;background:var(--green)"></i></div>
+          <div class="tank"><i style="height:68%;background:var(--green)"></i></div>
+        </div>
+        <span class="mbtext"><b>78%</b> <span style="color:var(--dim)">·</span> 2h04</span>
+      </div>
+      <div class="sys"><span>◐</span><span>Fri 13:22</span></div>
+    </div>
+    <div class="cap"><b>B — glyph + the one number that matters (recommended).</b> Same tanks, plus the fill and the time-to-reset of whichever window will bind first across all three vendors — here Claude/konstantin 5h at 78%, 2h04 to reset. ~72 px wide.</div>
+  </div>
+</div>
+<div class="row" style="margin-top:18px">
+  <div>
+    <div class="menubar">
+      <span style="color:var(--dim)">Finder</span><span style="color:var(--dim)">File</span><span style="color:var(--dim)">Edit</span>
+      <span class="sp"></span>
+      <div class="mbitem alert">
+        <div class="tanks">
+          <div class="tank"><i style="height:91%;background:var(--red)"></i></div>
+          <div class="tank"><i style="height:41%;background:var(--green)"></i></div>
+          <div class="tank"><i style="height:68%;background:var(--green)"></i></div>
+        </div>
+        <span class="mbtext"><b>⇄ Claude → admin</b></span>
+      </div>
+      <div class="sys"><span>◐</span><span>Fri 14:05</span></div>
+    </div>
+    <div class="cap"><b>C — attention state.</b> When the advisor has a switch to recommend, the number is replaced by the action. The item goes back to B the moment the switch happens (or the recommendation expires).</div>
+  </div>
+</div>
+
+<h2>2 · Panel — normal state (click the menu bar item)</h2>
+<div class="row">
+<div class="panel">
+  <div class="hd"><span class="title">Tanks</span><span class="meta">13:22:40 · polls every 60 s</span></div>
+  <div class="advice">
+    <div class="a"><span class="dot" style="background:var(--amber)"></span><div class="txt">Claude / konstantin 5h will run dry ~14:10, reset is 15:30 — admin's 5h is at 12%.<small>Burn 31 %/h over the last 40 min · switch when it reaches 90% or at 14:00, whichever first</small></div><button class="btn ghost">Switch at 90%</button></div>
+    <div class="a"><span class="dot" style="background:var(--green)"></span><div class="txt">Cursor is at $41 of its $285 limit with 16 days left — spare capacity for review-type work.</div></div>
+  </div>
+
+  <div class="vendor">
+    <div class="vh"><span class="vn" style="color:var(--claude)">CLAUDE</span>
+      <span class="acct on">konstantin <span class="pill">ACTIVE</span></span>
+      <span class="acct">admin <span class="sw">switch ⌘1</span></span></div>
+    <div class="line"><span class="lbl">5-hour</span>
+      <div class="cell"><div class="bar amber"><div class="used" style="width:78%"></div><div class="proj" style="left:78%;width:22%"></div><div class="over"></div></div><div class="val"><b>78%</b><span class="warn">100% at 14:10</span><span>↺ 15:30</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:12%"></div></div><div class="val"><b>12%</b><span>↺ 16:45</span></div></div></div>
+    <div class="line"><span class="lbl">week<small>all models</small></span>
+      <div class="cell"><div class="bar"><div class="used" style="width:44%"></div><div class="proj" style="left:44%;width:26%"></div></div><div class="val"><b>44%</b><span>→ 70%</span><span>↺ Sat 07:00</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:38%"></div><div class="proj" style="left:38%;width:4%"></div></div><div class="val"><b>38%</b><span>Sat 07:00</span></div></div></div>
+    <div class="line"><span class="lbl">week<small>Fable ≤50%</small></span>
+      <div class="cell"><div class="bar"><div class="used" style="width:12%"></div></div><div class="val"><b>12%</b><span>of the Fable share</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:31%"></div></div><div class="val"><b>31%</b><span></span></div></div></div>
+  </div>
+
+  <div class="vendor">
+    <div class="vh"><span class="vn" style="color:var(--codex)">CODEX</span>
+      <span class="acct on">konstantin <span class="pill">ACTIVE</span></span>
+      <span class="acct">admin <span class="sw">switch ⌘2</span></span></div>
+    <div class="line"><span class="lbl">5-hour</span>
+      <div class="cell"><div class="bar"><div class="used" style="width:41%"></div><div class="proj" style="left:41%;width:9%"></div></div><div class="val"><b>41%</b><span>↺ 17:50</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:0%"></div></div><div class="val"><b>0%</b><span>idle</span></div></div></div>
+    <div class="line"><span class="lbl">month<small>spend control</small></span>
+      <div class="cell"><div class="bar red"><div class="used" style="width:99%"></div><div class="over"></div></div><div class="val"><b>99%</b><span class="bad">exhausted</span><span>Oct 1</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:9%"></div></div><div class="val"><b>9%</b><span>Oct 1</span></div></div></div>
+  </div>
+
+  <div class="vendor">
+    <div class="vh"><span class="vn" style="color:var(--cursor)">CURSOR</span>
+      <span class="acct on">konstantin <span class="pill">ACTIVE</span></span>
+      <span class="acct">admin <span class="sw">manual</span></span></div>
+    <div class="line"><span class="lbl">month<small>vs hard limit</small></span>
+      <div class="cell"><div class="bar"><div class="used" style="width:14%"></div><div class="proj" style="left:14%;width:5%"></div></div><div class="val"><b>$41 / $285</b><span>→ $55</span><span>Oct 12</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:5%"></div></div><div class="val"><b>$13 / $285</b><span>Oct 3</span></div></div></div>
+    <div class="line"><span class="lbl">by model<small>this cycle</small></span>
+      <div class="cell"><div class="val wrap" style="margin:0"><span>Opus 5.5 <b>$24</b></span><span>Sonnet <b>$11</b></span><span>Auto <b>$6</b></span></div></div>
+      <div class="cell"><div class="val wrap" style="margin:0"><span>Opus 5.5 <b>$9</b></span><span>Auto <b>$4</b></span></div></div></div>
+  </div>
+
+  <div class="paid">
+    <div class="line"><span class="lbl">paid<small>overflow</small></span>
+      <div class="cell"><div class="val wrap" style="margin:0"><span>Claude credits <b>$1,516 / $3,000</b></span><span>Cursor team spend <b>$41 / $285</b></span><span>OpenAI API <b>$4.20</b></span></div></div></div>
+  </div>
+  <div class="ft"><span>⌘R refresh</span><span class="kbd">settings</span><span class="sp"></span><span>all six accounts polled</span></div>
+</div>
+
+<div style="max-width:380px">
+  <div class="legend"><span><i class="sw1"></i> used</span><span><i class="sw2"></i> projected by reset</span><span><i class="sw3"></i> crosses 100% before reset</span><span><i class="sw4"></i> not signed in</span></div>
+  <div class="cap" style="margin-top:14px">Reading order is fixed: the advice strip first (what to do), then vendors top to bottom in the order you use them, active account always in the left column. Every number the advisor quotes is visible in the bars below it, so a recommendation can be checked in one glance.</div>
+  <div class="cap">The "switch" link on the inactive Claude column runs <span class="kbd">acc admin</span> (Touch ID, existing tool). Codex switching swaps the CLI's auth file the same way. Cursor has no supported account swap, so its column says "manual" and the advice tells you when it is worth doing.</div>
+</div>
+</div>
+
+<h2>3 · Panel — attention state (switch now)</h2>
+<div class="row">
+<div class="panel">
+  <div class="hd"><span class="title">Tanks</span><span class="meta">14:05:12 · polls every 60 s</span></div>
+  <div class="advice" style="background:#3a2a2a">
+    <div class="a"><span class="dot" style="background:var(--red)"></span><div class="txt"><b>Switch Claude to admin now.</b> konstantin 5h is 91%, reaches 100% at 14:22; reset is 15:30. Past 100% every turn bills credits ($1,516 spent this month).<small>admin: 5h 12%, week 38% — ~4h of headroom at your current rate</small></div><button class="btn red">Switch → admin</button></div>
+    <div class="a"><span class="dot" style="background:var(--amber)"></span><div class="txt">Codex monthly spend control is exhausted (99%, resets Oct 1) — admin is at 9%; route Codex work there until then.</div><button class="btn ghost">Switch → admin</button></div>
+  </div>
+  <div class="vendor">
+    <div class="vh"><span class="vn" style="color:var(--claude)">CLAUDE</span>
+      <span class="acct on">konstantin <span class="pill">ACTIVE</span></span>
+      <span class="acct">admin <span class="sw">switch ⌘1</span></span></div>
+    <div class="line"><span class="lbl">5-hour</span>
+      <div class="cell"><div class="bar red"><div class="used" style="width:91%"></div><div class="proj" style="left:91%;width:9%"></div><div class="over"></div></div><div class="val"><b>91%</b><span class="bad">100% at 14:22</span><span>↺ 15:30</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:12%"></div></div><div class="val"><b>12%</b><span>↺ 16:45</span></div></div></div>
+    <div class="line"><span class="lbl">week<small>all models</small></span>
+      <div class="cell"><div class="bar"><div class="used" style="width:47%"></div><div class="proj" style="left:47%;width:26%"></div></div><div class="val"><b>47%</b><span>→ 73%</span><span>Sat 07:00</span></div></div>
+      <div class="cell"><div class="bar idle"><div class="used" style="width:38%"></div></div><div class="val"><b>38%</b><span>Sat 07:00</span></div></div></div>
+  </div>
+  <div class="ft"><span style="color:var(--dim2)">(Codex and Cursor sections unchanged, collapsed here for the mock)</span></div>
+</div>
+<div style="max-width:380px">
+  <div class="cap">The attention state is the same panel with the top recommendation promoted and coloured. The switch button runs the existing <span class="kbd">acc</span> flow; the app does not hold the Touch ID gate itself. Once the switch completes the app re-polls both accounts and the strip returns to normal.</div>
+  <div class="cap">Second-line advice is time-shifted: it names the future hour a weekly window will bind, so it can be answered with a reminder instead of an action now.</div>
+</div>
+</div>
+</body>
+</html>
