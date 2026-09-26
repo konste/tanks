@@ -2,8 +2,8 @@ import AppKit
 
 @MainActor
 public final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var container: AppContainer?
-    private var statusItemController: StatusItemController?
+    private var container: TanksContainer?
+    private var statusItemController: TanksStatusItemController?
     private var singleInstanceLock: SingleInstanceLock.Token?
     private let updater = UpdaterController()
 
@@ -85,17 +85,17 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func finishLaunching(isFreshInstall: Bool) async {
-        let container = await AppContainer(isFreshInstall: isFreshInstall)
+        // Tanks: the OpenUsage provider container is replaced by the six-account tank poller.
+        let container = TanksContainer()
         self.container = container
-        statusItemController = StatusItemController(container: container, updater: updater)
-        // Starts background update checks (release build only; dormant under preview/`swift run`).
-        updater.start()
+        statusItemController = TanksStatusItemController(container: container)
+        TanksSnapshot.armIfRequested(container: container)
     }
 
     /// Flush queued telemetry on quit. The SDK's lifecycle autocapture is off (we emit our own daily
     /// rollups), so it won't auto-flush on termination — this explicit flush keeps low-frequency events
     /// from being stranded across a clean quit.
     public func applicationWillTerminate(_ notification: Notification) {
-        container?.telemetry.flush()
+        container?.store.stop()
     }
 }
