@@ -7,8 +7,8 @@ let package = Package(
         .macOS(.v15)
     ],
     products: [
-        .executable(name: "OpenUsage", targets: ["OpenUsageApp"]),
-        .executable(name: "openusage-cli", targets: ["OpenUsageCLI"])
+        .executable(name: "Tanks", targets: ["OpenUsageApp"]),
+        .executable(name: "tanks-cli", targets: ["OpenUsageCLI"])
     ],
     dependencies: [],
     targets: [
