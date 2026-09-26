@@ -9,6 +9,14 @@ import SwiftUI
 ///   switch-now and credits rules, so the alert state can be inspected.
 @MainActor
 enum TanksSnapshot {
+    /// True when this process was launched to render snapshots. Such an instance lives for a
+    /// couple of seconds and must not register a status item: a burst of them once left Control
+    /// Center refusing to place the real app's item under the same bundle id.
+    static var isRequested: Bool {
+        guard let dir = ProcessInfo.processInfo.environment["TANKS_SNAPSHOT_DIR"] else { return false }
+        return !dir.isEmpty
+    }
+
     static func armIfRequested(container: TanksContainer) {
         let env = ProcessInfo.processInfo.environment
         guard let dir = env["TANKS_SNAPSHOT_DIR"], !dir.isEmpty else { return }

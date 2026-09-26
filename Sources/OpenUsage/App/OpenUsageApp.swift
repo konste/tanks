@@ -88,8 +88,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         // Tanks: the OpenUsage provider container is replaced by the six-account tank poller.
         let container = TanksContainer()
         self.container = container
-        statusItemController = TanksStatusItemController(container: container)
-        TanksSnapshot.armIfRequested(container: container)
+        if TanksSnapshot.isRequested {
+            TanksSnapshot.armIfRequested(container: container)
+        } else {
+            statusItemController = TanksStatusItemController(container: container)
+        }
     }
 
     /// Flush queued telemetry on quit. The SDK's lifecycle autocapture is off (we emit our own daily

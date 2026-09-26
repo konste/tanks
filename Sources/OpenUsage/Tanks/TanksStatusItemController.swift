@@ -6,6 +6,13 @@ import SwiftUI
 /// appearance follows the system.
 @MainActor
 final class TanksStatusItemController: NSObject {
+    private static let autosaveName = "tanks"
+    /// Points from the right edge of the status area. The rightmost ~240 pt belong to the clock,
+    /// Control Center and battery, and anything sorted past them is clipped; a smaller number
+    /// than this lands there. With a menu-bar manager such as Ice the visible section sits just
+    /// left of its chevron (~250 pt on a 16" MacBook Pro), so 300 keeps the tank in view.
+    private static let preferredPositionFromRight = 300.0
+
     private let container: TanksContainer
     private let statusItem: NSStatusItem
     private let panel: MenuBarPanel
@@ -21,7 +28,16 @@ final class TanksStatusItemController: NSObject {
 
     init(container: TanksContainer) {
         self.container = container
+        // A new status item starts at the far left of the status area, which a menu-bar manager
+        // (Ice, Bartender) treats as its hidden section, and a notched display drops outright once
+        // the bar is full. Claim a slot near the system items on first launch so the tank is seen;
+        // a position the user later drags to (⌘-drag) is kept by the autosave.
+        let positionKey = "NSStatusItem Preferred Position \(Self.autosaveName)"
+        if UserDefaults.standard.object(forKey: positionKey) == nil {
+            UserDefaults.standard.set(Self.preferredPositionFromRight, forKey: positionKey)
+        }
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        self.statusItem.autosaveName = Self.autosaveName
         self.hosting = NSHostingController(rootView: AnyView(TanksDashboardView().environment(container)))
         self.panel = MenuBarPanel(
             contentRect: NSRect(origin: .zero, size: TanksDashboardView.size),
@@ -40,6 +56,20 @@ final class TanksStatusItemController: NSObject {
         MenuBarPopover.dismissHandler = { [weak self] in self?.hidePanel() }
         MenuBarPopover.showHandler = { [weak self] in self?.showPanel() }
         AppLog.info(.statusItem, "Tanks status item ready")
+        // Control Center (the status bar host) keeps per-bundle state in memory; after a burst of
+        // short-lived instances of this bundle id it once stopped placing the item at all (the
+        // button's window stayed at its unplaced origin). Log the placement so that state is
+        // visible in the log instead of only in the missing icon; `killall ControlCenter` clears it.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard let self, let window = self.statusItem.button?.window else { return }
+            let rect = NSStringFromRect(window.frame)
+            if window.frame.origin.x > 0 || window.frame.origin.y > 0 {
+                AppLog.info(.statusItem, "status item placed at \(rect)")
+            } else {
+                AppLog.warn(.statusItem, "status item NOT placed by Control Center (\(rect)); killall ControlCenter clears it")
+            }
+        }
     }
 
     private func configurePanel() {

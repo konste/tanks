@@ -5,7 +5,7 @@ set -euo pipefail
 # /Applications. The dev build:
 #   - is signed with a stable Apple Development identity when one exists (keychain grants are keyed
 #     to identity + bundle id), otherwise ad-hoc;
-#   - uses its own bundle id (dev.konste.tanks.dev), so it never touches OpenUsage's settings,
+#   - uses its own bundle id (dev.konste.tanks), so it never touches OpenUsage's settings,
 #     keychain items or process (the binary is named Tanks, so pkill never hits OpenUsage);
 #   - has no update feed, no telemetry, no iCloud container.
 #
@@ -19,7 +19,7 @@ CONFIG="${CONFIG:-release}"
 TARGET_NAME="Tanks"                     # SwiftPM product / binary name
 APP_DISPLAY="Tanks"                     # user-facing app name
 CLI_NAME="tanks"
-BUNDLE_ID="${BUNDLE_ID:-dev.konste.tanks.dev}"
+BUNDLE_ID="${BUNDLE_ID:-dev.konste.tanks}"
 MIN_SYSTEM_VERSION="15.0"
 APP_VERSION="0.1.0"
 APP_BUILD="0.1.0"
