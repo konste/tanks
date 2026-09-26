@@ -97,6 +97,14 @@ struct ClaudeUsageClient: Sendable {
     /// matches Claude Code's own `claude-cli/<version> (external, cli)` format: Anthropic decides grant
     /// eligibility by client surface, and anything it doesn't recognize as Claude Code comes back
     /// `eligible: false, ineligible_reason: "surface"` with no grants.
+    ///
+    /// Tanks (2026-09-26): the endpoint also picks its rate-limit bucket by User-Agent. Measured on
+    /// both accounts, calls 25 s apart: every `claude-code/<version>` string answered 200 every time,
+    /// while `claude-cli/…`, `curl/…`, `Tanks/…`, `Claude-Code/…` and `claude-code` without a version
+    /// answered 429 `Retry-After: 0` on every call. So the agent below carries the `claude-code/`
+    /// prefix; the `(external, cli)` suffix is kept for the grant-surface check above.
+    static let userAgent = "claude-code/2.1.273 (external, cli)"
+
     func fetchUsage(accessToken: String, config: ClaudeOAuthConfig) async throws -> HTTPResponse {
         try await httpClient.send(
             HTTPRequest(
@@ -107,7 +115,7 @@ struct ClaudeUsageClient: Sendable {
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                     "anthropic-beta": "oauth-2025-04-20",
-                    "User-Agent": "claude-cli/2.1.280 (external, cli)"
+                    "User-Agent": Self.userAgent
                 ],
                 timeout: 10
             )

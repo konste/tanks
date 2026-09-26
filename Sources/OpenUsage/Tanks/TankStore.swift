@@ -3,9 +3,10 @@ import Observation
 
 /// The live state of all six accounts: last reading, projection per tank, advice, and the poll loop.
 ///
-/// Six sources poll on their own 60-second cadence, staggered 10 s apart, so no minute ever fires
-/// six requests at once. A 429 backs off that one account for `rateLimitBackoff`; any other failure
-/// keeps the last good reading on screen marked stale and retries next tick.
+/// Six sources poll on their own cadence (60 s, Claude 120 s, accounts not in use 10 min; see
+/// `TanksConfig.pollInterval(vendor:isActive:)`), staggered so no minute fires six requests at
+/// once. A 429 backs off that one account for `rateLimitBackoff`; any other failure keeps the last
+/// good reading on screen marked stale and retries next tick.
 @MainActor
 @Observable
 final class TankStore {
@@ -86,8 +87,10 @@ final class TankStore {
                 while !Task.isCancelled {
                     guard let self else { return }
                     await self.poll(source)
-                    let first = self.states[source.account.id]?.reading == nil
-                    try? await Task.sleep(for: .seconds(first ? 5 : self.config.pollInterval + Double(index) * self.config.staggerInterval / 6))
+                    let state = self.states[source.account.id]
+                    let first = state?.reading == nil
+                    let interval = self.config.pollInterval(vendor: source.account.id.vendor, isActive: state?.isActive ?? false)
+                    try? await Task.sleep(for: .seconds(first ? 5 : interval + Double(index) * self.config.staggerInterval / 6))
                 }
             })
         }
@@ -116,7 +119,9 @@ final class TankStore {
             AppLog.warn(.refresh, "\(id): \(error.localizedDescription)")
             switch error {
             case .rateLimited(let secs):
-                states[id]?.backoffUntil = now().addingTimeInterval(max(60, Double(secs ?? Int(config.rateLimitBackoff))))
+                // Anthropic answers `Retry-After: 0`; the floor is that account's own cadence.
+                let floor = config.pollInterval(vendor: id.vendor, isActive: states[id]?.isActive ?? false)
+                states[id]?.backoffUntil = now().addingTimeInterval(max(floor, Double(secs ?? Int(config.rateLimitBackoff))))
                 markStale(id, reason: error.localizedDescription)
             case .notSignedIn(let why):
                 var reading = states[id]?.reading

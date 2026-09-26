@@ -36,8 +36,20 @@ struct TanksConfig: Sendable, Codable {
     var cursorActiveSlot: AccountSlot = .primary
 
     var pollInterval: TimeInterval = 60
+    /// Claude's usage endpoint admits roughly one read per two minutes per token (measured
+    /// 2026-09-26: a 60 s poller got 429 on every other call), and the token is shared with
+    /// `allowance_probe.py`, so the signed-in Claude account polls at this slower cadence.
+    var claudePollInterval: TimeInterval = 120
+    /// Accounts not currently in use change slowly; they are read at this cadence so the advisor
+    /// still knows their headroom without spending the shared rate limit on them.
+    var idlePollInterval: TimeInterval = 600
     var staggerInterval: TimeInterval = 10
     var rateLimitBackoff: TimeInterval = 300
+
+    func pollInterval(vendor: Vendor, isActive: Bool) -> TimeInterval {
+        if !isActive { return idlePollInterval }
+        return vendor == .claude ? claudePollInterval : pollInterval
+    }
 
     /// Optional mirror of `~/.chief-data/bin/allowance_probe.py`'s output file. Off until the probe's
     /// launchd job is retired, so two writers never race on the file.

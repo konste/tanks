@@ -52,11 +52,12 @@ final class TanksContainer {
 
     var headerMeta: String {
         if let notice { return notice }
-        guard let tick = store.lastTick else { return "polling every \(Int(config.pollInterval)) s" }
+        let cadence = "polls \(Int(config.pollInterval)) s · Claude \(Int(config.claudePollInterval)) s · idle \(Int(config.idlePollInterval / 60)) min"
+        guard let tick = store.lastTick else { return cadence }
         let live = store.states.values.filter { $0.reading?.isLive ?? false }.count
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss"
-        return "\(f.string(from: tick)) · polls every \(Int(config.pollInterval)) s · \(live) of \(store.states.count) accounts fresh"
+        return "\(f.string(from: tick)) · \(cadence) · \(live) of \(store.states.count) fresh"
     }
 
     func performSwitch(to id: TankAccountID) {

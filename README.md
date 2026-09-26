@@ -9,7 +9,7 @@ not the official OpenUsage.** The provider clients, auth stores and app shell co
 (MIT); the OpenUsage name, logo and branding are not used here per its
 [trademark policy](TRADEMARK.md). What Tanks changes: a fixed 780×430 six-account dashboard with
 horizontal tanks and projected usage, a compact menu-bar strip, second-account credential sources
-(parked Claude keychain items, a second Codex `auth.json`, the Cursor Admin API), 60-second polling,
+(parked Claude keychain items, a second Codex `auth.json`, the Cursor Admin API), 60-second polling (Claude 120 s, idle accounts 10 min),
 switch-now alerts, and no update feed, telemetry or iCloud sync.
 
 Design, mocks and the survey of alternatives: [docs/tanks/design.md](docs/tanks/design.md).

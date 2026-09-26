@@ -45,9 +45,13 @@ where the admin account buys a better source.
 
 ## Polling and projection (his rule: current state to the minute, no history UI)
 
-- Poll every 60 s per account, six accounts staggered 10 s apart. Claude's endpoint is the
-  rate-limited one; if it 429s, back off that account to 5 min and mark the tank stale (grey
-  hatch), never the whole panel.
+- Poll every 60 s per account, six accounts staggered 10 s apart; the signed-in Claude account
+  every 120 s and accounts not in use every 10 min (his ruling 2026-09-26). Claude's endpoint
+  admits about one read per two minutes per token, and only with a `claude-code/<version>`
+  User-Agent: measured 2026-09-26, 25 s apart on both tokens, every `claude-code/…` call answered
+  200 and every `claude-cli/…`, `curl/…` or other agent answered 429 `Retry-After: 0`. If it still
+  429s, back off that account for its own cadence (Retry-After is always 0) and mark the tank stale
+  (grey hatch), never the whole panel.
 - Keep an in-memory ring of samples per tank (last 60 min for 5-hour windows, last 12 h for
   weekly/monthly) purely to compute a slope; it is never shown. Slope = least-squares over the
   ring, floored at 0, dropping the segment that spans a reset.
