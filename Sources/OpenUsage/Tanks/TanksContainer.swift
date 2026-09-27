@@ -9,6 +9,8 @@ final class TanksContainer {
     let config: TanksConfig
     let store: TankStore
     let actions: SwitchActions
+    /// The macOS login item for this bundle; seeded on first live launch, switchable in the footer.
+    let launchAtLogin = LaunchAtLoginSetting()
     /// The last switch outcome, shown in the header for a while.
     private(set) var notice: String?
 
@@ -51,6 +53,7 @@ final class TanksContainer {
         }
         AppNotifications.shared.registerAsDelegate()
         AppNotifications.shared.requestAuthorization()
+        TanksLaunchAtLogin.seedOnce(launchAtLogin)
         store.start()
         reprojectTask = Task { [weak self] in
             while !Task.isCancelled {

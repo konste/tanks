@@ -55,6 +55,20 @@ struct TanksDashboardView: View {
         HStack(spacing: 14 * S) {
             Button("Refresh") { container.store.refreshAll() }.buttonStyle(.plain).foregroundStyle(p.link)
             Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(.plain).foregroundStyle(p.link)
+            // Drawn by hand: the AppKit checkbox style renders as a broken glyph in the snapshot path.
+            Button {
+                container.launchAtLogin.update(to: !container.launchAtLogin.isEnabled)
+            } label: {
+                HStack(spacing: 4 * S) {
+                    Image(systemName: container.launchAtLogin.isEnabled ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(container.launchAtLogin.isEnabled ? p.link : p.dim)
+                    Text("launch at login")
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(p.dim)
+            .help(container.launchAtLogin.errorMessage ?? "macOS login item for this app; also in System Settings → General → Login Items")
+            .onAppear { container.launchAtLogin.refreshStatus() }
             Spacer()
             Text("solid = used · hatched = projected by reset · red tick = crosses 100% first · blue = idle or not signed in")
                 .foregroundStyle(p.dim)
