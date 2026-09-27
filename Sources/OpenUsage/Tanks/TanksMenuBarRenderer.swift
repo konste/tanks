@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// The compact menu-bar item (design variant B): a tank glyph filled to the binding window's level
+/// The compact menu-bar item (design variant B): a tank glyph filled to the current usage of the
+/// window that runs dry first (`TankStore.bindingProjection`)
 /// plus that window's percentage. State C (an alert advice is pending) adds a solid badge with a
 /// knocked-out mark and sets the text bold.
 ///

@@ -142,10 +142,10 @@ final class TanksStatusItemController: NSObject {
 
     private func menuBarContent() -> TanksMenuBarRenderer.Content {
         let store = container.store
-        let worst = store.worstActiveProjection
+        let binding = store.bindingProjection
         let stale = store.states.values.filter(\.isActive).contains { !($0.reading?.isLive ?? false) }
         return TanksMenuBarRenderer.Content(
-            fill: worst.map { $0.projectedFill ?? $0.fill },
+            fill: binding?.fill,
             attention: store.attention,
             stale: stale
         )

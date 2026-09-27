@@ -55,13 +55,23 @@ final class TankStore {
         return pair.sorted { $0.isActive && !$1.isActive }
     }
 
-    var worstActiveProjection: TankProjection? {
-        states.values.filter(\.isActive).flatMap(\.projections)
-            // Percent and credit tanks both fill against a cap; only dollar tanks (uncapped spend)
-            // have no meaningful fill. Codex's month is a credit tank, and leaving it out let the
-            // glyph say 25% while the strip alerted on that month at 99% (2026-09-26).
-            .filter { !$0.tank.isPaid && $0.tank.format != .dollars }
-            .max { ($0.projectedFill ?? $0.fill) < ($1.projectedFill ?? $1.fill) }
+    /// The active accounts' capped tank that runs dry first, for the menu-bar glyph (his 2026-09-26
+    /// ask: "the usage percentage of the allowance which is going to exhaust first"). The earliest
+    /// projected crossing wins; without one, the highest projected fill at reset; the glyph then
+    /// shows that tank's current usage.
+    ///
+    /// Percent and credit tanks both fill against a cap; only dollar tanks (uncapped spend) have
+    /// no meaningful fill. Codex's month is a credit tank, and leaving it out let the glyph say
+    /// 25% while the strip alerted on that month at 99% (2026-09-26).
+    var bindingProjection: TankProjection? {
+        Self.binding(among: states.values.filter(\.isActive).flatMap(\.projections))
+    }
+
+    static func binding(among projections: [TankProjection]) -> TankProjection? {
+        let capped = projections.filter { !$0.tank.isPaid && $0.tank.format != .dollars }
+        let crossing = capped.compactMap { p in p.crossesAt.map { (p, $0) } }
+        if let soonest = crossing.min(by: { $0.1 < $1.1 }) { return soonest.0 }
+        return capped.max { ($0.projectedFill ?? $0.fill) < ($1.projectedFill ?? $1.fill) }
     }
 
     var attention: Bool {

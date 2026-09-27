@@ -40,8 +40,7 @@ enum TanksSnapshot {
                     try write(cg, to: "\(dir)/panel-\(scheme == .dark ? "dark" : "light").png")
                 }
                 let store = container.store
-                let worst = store.worstActiveProjection
-                let glyph = TanksMenuBarRenderer.image(for: .init(fill: worst.map { $0.projectedFill ?? $0.fill }, attention: store.attention, stale: false))
+                let glyph = TanksMenuBarRenderer.image(for: .init(fill: store.bindingProjection?.fill, attention: store.attention, stale: false))
                 if let cg = glyph.cgImage(forProposedRect: nil, context: nil, hints: nil) {
                     try write(cg, to: "\(dir)/menubar.png")
                 }

@@ -12,7 +12,17 @@ final class TanksContainer {
     /// The last switch outcome, shown in the header for a while.
     private(set) var notice: String?
 
-    @ObservationIgnored private let notifier = TanksNotifier()
+    @ObservationIgnored private let notifier = TanksContainer.makeNotifier()
+
+    /// Snapshot instances render and exit: they never post (each one used to re-post every alert)
+    /// and they claim keys in a scratch suite, so fixture keys never silence a live alert.
+    private static func makeNotifier() -> TanksNotifier {
+        guard TanksSnapshot.isRequested else { return TanksNotifier() }
+        let suite = "dev.konste.tanks.snapshot"
+        let scratch = UserDefaults(suiteName: suite) ?? .standard
+        scratch.removePersistentDomain(forName: suite)
+        return TanksNotifier(post: TanksNotifier.silentPost, defaults: scratch)
+    }
     @ObservationIgnored private let writer: TanksStateWriter
     @ObservationIgnored private var reprojectTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?

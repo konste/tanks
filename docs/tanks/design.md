@@ -87,7 +87,7 @@ Recommendations expire when their condition clears; a dismissed one stays quiet 
 
 ## Alerts
 
-Menu-bar state C (a solid knock-out "!" badge next to the bold percentage; the image stays a template so macOS tints it to the bar — the earlier red-in-colour version was illegible on his dark-blue bar, 2026-09-26) plus a macOS notification for rule 1 and rule 4 only. The glyph's tank and percentage are the worst projected fill among the active accounts' capped tanks (percent and credit; dollar tanks are uncapped and excluded). Email stays available as
+Menu-bar state C (a solid knock-out "!" badge next to the bold percentage; the image stays a template so macOS tints it to the bar — the earlier red-in-colour version was illegible on his dark-blue bar, 2026-09-26) plus a macOS notification for rule 1 and rule 4 only. The glyph's tank and percentage are the current usage of the active accounts' capped tank that runs dry first: the earliest projected 100% crossing, else the highest projected fill at reset (percent and credit tanks; dollar tanks are uncapped and excluded). Posted notification keys persist in UserDefaults (`tanks.notifiedAdviceKeys`, key → posted-at) and expire with their window (unstamped credits keys after 24 h), so a relaunch repeats nothing; snapshot instances never post and claim keys in a scratch suite. Email stays available as
 an option, off by default. (This contradicts the 2026-09-19 "email only" policy — needs his call.)
 
 ## Risks
