@@ -79,7 +79,7 @@ struct CodexTankSource: TankSource {
                 key: "month", label: "month", used: used, limit: limit,
                 format: unit == "credit" ? .credits : .dollars,
                 resetsAt: resets, periodSeconds: 30 * 86400,
-                note: "spend control, \(unit)s"
+                note: "spend control"
             ))
         }
         if let credits = body["credits"] as? [String: Any], let balance = ProviderParse.number(credits["balance"]) {

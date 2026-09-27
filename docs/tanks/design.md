@@ -36,7 +36,7 @@ and `render_allowance_page.py` keep working); opening chatgpt.com and cursor.com
 |---|---|---|---|
 | Claude | `GET api.anthropic.com/api/oauth/usage`, bearer = OAuth token, header `anthropic-beta: oauth-2025-04-20` **and `User-Agent: claude-code/<ver>`** (without it the call lands in a 429 bucket — the probe hit `rate_limit_error` at 13:23 today) | `five_hour`, `seven_day`, `seven_day_opus`/`_sonnet` (sub-caps), `extra_usage` (credits: monthly_limit, used_credits) | token of the parked account: keychain `Claude Code-credentials-parked-admin` / `-parked-konstantin` (owned by `claude_account_switch`) |
 | Codex | `GET chatgpt.com/backend-api/wham/usage`, bearer from `~/.codex/auth.json` + `ChatGPT-Account-Id` | `rate_limit` {used_percent, limit_window_seconds, reset_at}; `spend_control.individual_limit` {used, limit, remaining, reset_at} (monthly); `credits`; plan from id_token (`self_serve_business_prolite`) | a second `auth.json` kept by Tanks (`~/.codex-tanks/admin/auth.json`), refreshed through `auth.openai.com` |
-| Cursor | POST `cursor.com/api/dashboard/get-aggregated-usage-events`, `get-hard-limit`, `get-monthly-invoice` — cookie `WorkosCursorSessionToken=<sub>::<jwt>` from `state.vscdb` + header `Origin: https://cursor.com` (403 without it). `get-user-usage-summary` returns HTML today. | per-model cents this cycle incl. the Auto pool, hard limit ($285), cycle start/end | **Enterprise Admin API** `api.cursor.com/teams/{spend,daily-usage-data,members}` with an admin key from the admin account — per-member spend for both accounts in one documented call, no cookie |
+| Cursor | POST `cursor.com/api/dashboard/get-aggregated-usage-events`, `get-hard-limit`, `get-monthly-invoice`, `cursor.com/api/usage-summary` — cookie `WorkosCursorSessionToken=<sub>::<jwt>` from `state.vscdb` + header `Origin: https://cursor.com` (403 without it). `get-user-usage-summary` returns HTML today. | per-model cents this cycle by pool (`tier` 2 = Cursor models, 1 = Other models), team on-demand cap (`hardLimit` 28500 dollars), cycle start/end, per-user on-demand and team on-demand used | **Enterprise Admin API** `api.cursor.com/teams/spend` with an admin key from the admin account — per-member rows for both accounts in one documented call, no cookie. Row → tanks: `autoPercentUsed` = "cursor models" (the dashboard's Cursor Models pool), `apiPercentUsed` = "other models" (its Other Models pool), `spendCents` = the account's on-demand line (documented as "on-demand spend … excludes included usage"); `totalPercentUsed` is the pools blended by size ($1050 + $200 per seat here, from `includedSpendCents` = 1050·auto + 200·api on both accounts, 2026-09-26) and is not shown. All rows' `spendCents` summed = the team on-demand meter (matched the dashboard's `teamUsage.onDemand.used` to the dollar); its cap comes from `cursorTeamOnDemandLimitDollars` in config because no Admin API endpoint returns it. |
 
 Admin-side extras that do NOT exist: Anthropic's org usage report returns API records only
 (claude-code#27780, open since Feb); OpenAI's Compliance API is an audit log, Enterprise-only.
@@ -60,6 +60,14 @@ where the admin account buys a better source.
   advisor quotes.
 - Colour: green on course; amber = projected to land in the last 10% or fill ≥ 80%; red =
   projected to cross 100% or fill ≥ 92% (the probe's tiers).
+- Under each bar, right side: the current window as `start – end` (`16:30 – 21:30`, `Sep 26 – Oct 3
+  07:00`, `Sep 1 – Oct 1 11:24`), the tooltip carrying both endpoints in full. The start is the
+  source's when it states one (Cursor's cycle start) and reset minus period otherwise
+  (`Tank.windowStart`). His ask 2026-09-26: "show when current period starts/ends".
+- Paid meters print per account under that account's bars — Claude `credits (paid) $1,637 /
+  $3,000`, Codex flex credits, Cursor `on-demand $129 · no limit` — red at the credits-guard level.
+  A meter the whole team shares (Cursor's team on-demand against the team cap) is the column's
+  bottom line, once. His ask 2026-09-26: "show the amount spent for each account separately".
 
 ## Advisor (rule-based, every rule names its two numbers)
 

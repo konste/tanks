@@ -101,27 +101,39 @@ struct CursorTankSource: TankSource {
             throw TankSourceError.notSignedIn("\(account.email) is not on the team's spend list")
         }
         let cycleEnd = me.cycleStart.flatMap { Calendar.current.date(byAdding: .month, value: 1, to: $0) }
-        // The allowance is the percent fields: `totalPercentUsed` is the share of the seat's included
-        // monthly usage consumed, split into the auto-mode and API pools. Dollars are the paid line.
+        // The seat's included usage is two pools that Cursor's dashboard shows side by side under
+        // "Included in Team": `autoPercentUsed` is its "Cursor Models" pool (Grok, Composer) and
+        // `apiPercentUsed` its "Other Models" pool (third-party models). The labels follow the
+        // dashboard so the two agree at a glance (his reconciliation ask, 2026-09-26).
+        // `totalPercentUsed` is the two pools blended by size — for this team the arithmetic gives
+        // $1050 + $200 per seat — and the dashboard never shows it, so it is dropped.
+        // `spendCents` is documented as "on-demand spend ... (excludes included usage)": the paid
+        // line, per account.
         var tanks: [Tank] = []
-        if let total = me.totalPercent {
-            tanks.append(Tank(key: "month", label: "month", used: total, limit: 100, format: .percent,
-                              resetsAt: cycleEnd, periodSeconds: 30 * 86400))
-        }
         if let auto = me.autoPercent {
-            tanks.append(Tank(key: "auto", label: "auto", used: auto, limit: 100, format: .percent,
-                              resetsAt: cycleEnd, periodSeconds: 30 * 86400))
+            tanks.append(Tank(key: "auto", label: "cursor models", used: auto, limit: 100, format: .percent,
+                              resetsAt: cycleEnd, periodSeconds: 30 * 86400, startsAt: me.cycleStart))
         }
         if let api = me.apiPercent {
-            tanks.append(Tank(key: "api", label: "api", used: api, limit: 100, format: .percent,
-                              resetsAt: cycleEnd, periodSeconds: 30 * 86400))
+            tanks.append(Tank(key: "api", label: "other models", used: api, limit: 100, format: .percent,
+                              resetsAt: cycleEnd, periodSeconds: 30 * 86400, startsAt: me.cycleStart))
         }
         tanks.append(Tank(
-            key: "spend", label: "spend", used: me.spendCents / 100, limit: me.limitDollars ?? 0,
-            format: .dollars, resetsAt: cycleEnd, periodSeconds: 30 * 86400, isPaid: true,
-            note: me.limitDollars == nil ? "no limit" : nil
+            key: "spend", label: "on-demand", used: me.spendCents / 100, limit: me.limitDollars ?? 0,
+            format: .dollars, resetsAt: cycleEnd, periodSeconds: 30 * 86400, startsAt: me.cycleStart,
+            isPaid: true, note: me.limitDollars == nil ? "no limit" : nil
         ))
+        // Every member's on-demand spend summed is the team's on-demand meter (checked 2026-09-26
+        // against the dashboard's teamUsage.onDemand.used: $13,250 both ways); the cap comes from
+        // config because no Admin API endpoint returns it.
+        let teamCents = members.map(\.spendCents).reduce(0, +)
+        let teamLimit = config.cursorTeamOnDemandLimitDollars
+        let team = Tank(
+            key: "team", label: "team on-demand", used: teamCents / 100, limit: teamLimit ?? 0,
+            format: .dollars, resetsAt: cycleEnd, periodSeconds: 30 * 86400, startsAt: me.cycleStart,
+            isPaid: true, note: teamLimit == nil ? "no limit" : nil
+        )
         let plan = me.tier.map { $0.replacingOccurrences(of: "TIER_", with: "tier ") } ?? "Enterprise"
-        return AccountReading(account: account, plan: plan, tanks: tanks, fetchedAt: now())
+        return AccountReading(account: account, plan: plan, tanks: tanks, teamPaid: team, fetchedAt: now())
     }
 }

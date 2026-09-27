@@ -57,8 +57,11 @@ struct Tank: Sendable, Hashable, Codable {
     var format: TankFormat
     var resetsAt: Date?
     var periodSeconds: TimeInterval?
-    /// Paid overflow (Claude extra usage, Cursor hard limit, Codex flex credits): the credits-guard
-    /// rule watches these, and the column pins them to its bottom line.
+    /// When the current window opened, for vendors that state it (Cursor's billing cycle). Rolling
+    /// windows leave it nil and `windowStart` derives it from the reset and the period.
+    var startsAt: Date?
+    /// Paid overflow (Claude extra usage, Cursor on-demand, Codex flex credits): the credits-guard
+    /// rule watches these, and the account block prints them under its bars.
     var isPaid: Bool = false
     /// A one-line qualifier under the bar (e.g. "of the 50% share").
     var note: String?
@@ -70,6 +73,13 @@ struct Tank: Sendable, Hashable, Codable {
 
     var remainingSeconds: TimeInterval? {
         resetsAt.map { max(0, $0.timeIntervalSinceNow) }
+    }
+
+    /// Start of the current window: stated by the source, else reset minus period.
+    var windowStart: Date? {
+        if let startsAt { return startsAt }
+        guard let resetsAt, let periodSeconds, periodSeconds > 0 else { return nil }
+        return resetsAt.addingTimeInterval(-periodSeconds)
     }
 }
 
@@ -88,11 +98,15 @@ struct AccountReading: Sendable, Hashable {
     var tanks: [Tank]
     /// Per-model spend this cycle (Cursor), printed as a small line under the month bar.
     var byModel: [(model: String, dollars: Double)] = []
+    /// A paid meter shared by the whole team (Cursor's team-wide on-demand spend against the team
+    /// limit); the vendor column prints it once on its bottom line.
+    var teamPaid: Tank?
     var fetchedAt: Date
     var status: Status = .ok
 
     static func == (lhs: AccountReading, rhs: AccountReading) -> Bool {
         lhs.account == rhs.account && lhs.plan == rhs.plan && lhs.tanks == rhs.tanks
+            && lhs.teamPaid == rhs.teamPaid
             && lhs.fetchedAt == rhs.fetchedAt && lhs.status == rhs.status
             && lhs.byModel.map(\.model) == rhs.byModel.map(\.model)
             && lhs.byModel.map(\.dollars) == rhs.byModel.map(\.dollars)

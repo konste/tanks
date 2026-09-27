@@ -167,39 +167,38 @@ private struct VendorColumn: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// The column's bottom line: the paid overflow for the active account, or the team total for
-    /// Cursor (both accounts' spend against the shared limit).
+    /// The column's bottom line: a meter the whole team shares (Cursor's on-demand spend against
+    /// the team cap). Per-account paid lines live in each account block, so vendors without a team
+    /// meter have no bottom line.
     @ViewBuilder
     private func paidLine(_ states: [TankStore.AccountState]) -> some View {
-        let paid = states.first(where: \.isActive)?.projections.first { $0.tank.isPaid }
-        HStack {
-            switch vendor {
-            case .cursor:
-                let spends = states.compactMap { $0.projections.first { $0.tank.key == "spend" }?.tank }
-                let total = spends.map(\.used).reduce(0, +)
-                let limit = spends.map(\.limit).reduce(0, +)
-                Text("spend this cycle, both").foregroundStyle(palette.dim)
+        if let team = states.compactMap({ $0.reading?.teamPaid }).first {
+            HStack {
+                Text(team.label).foregroundStyle(palette.dim)
                 Spacer()
-                Text(spends.isEmpty ? "—" : "\(Fmt.dollars(total))\(limit > 0 ? " / \(Fmt.dollars(limit))" : "")").fontWeight(.semibold)
-            default:
-                if let paid {
-                    Text(paid.tank.label).foregroundStyle(palette.dim)
-                    Spacer()
-                    Text(paid.tank.limit > 0 ? "\(Fmt.amount(paid.tank.used, paid.tank)) / \(Fmt.amount(paid.tank.limit, paid.tank))" : (paid.tank.note ?? Fmt.amount(paid.tank.used, paid.tank)))
-                        .fontWeight(.semibold)
-                        .foregroundStyle(paid.tank.limit > 0 && paid.fill >= Advisor.creditsGuard ? palette.red : palette.fg)
-                } else {
-                    Text(vendor == .codex ? "flex credits" : "credits (paid)").foregroundStyle(palette.dim)
-                    Spacer()
-                    Text("none").fontWeight(.semibold)
-                }
+                Text(PaidLine.amount(team))
+                    .fontWeight(.semibold)
+                    .foregroundStyle(PaidLine.isHot(team) ? palette.red : palette.fg)
             }
+            .font(.system(size: 11 * S))
+            .padding(.top, 5 * S)
+            .overlay(alignment: .top) {
+                Rectangle().fill(palette.line).frame(height: 1 * S)
+            }
+            .help("all members' on-demand spend this cycle against the team cap\(team.windowStart.flatMap { s in team.resetsAt.map { e in ", \(Fmt.fullDate(s)) – \(Fmt.fullDate(e))" } } ?? "")")
         }
-        .font(.system(size: 11 * S))
-        .padding(.top, 5 * S)
-        .overlay(alignment: .top) {
-            Rectangle().fill(palette.line).frame(height: 1 * S)
-        }
+    }
+}
+
+/// Text for a paid meter: `$41.50 / $50` against a cap, `$129 · no limit` without one.
+enum PaidLine {
+    static func amount(_ tank: Tank) -> String {
+        if tank.limit > 0 { return "\(Fmt.amount(tank.used, tank)) / \(Fmt.amount(tank.limit, tank))" }
+        return tank.note.map { "\(Fmt.amount(tank.used, tank)) · \($0)" } ?? Fmt.amount(tank.used, tank)
+    }
+
+    static func isHot(_ tank: Tank) -> Bool {
+        tank.limit > 0 && tank.fill >= Advisor.creditsGuard
     }
 }
 
@@ -248,7 +247,24 @@ private struct AccountBlock: View {
                     .padding(.vertical, 4 * S)
             }
             ForEach(state.projections.filter { !$0.tank.isPaid }, id: \.tank.key) { projection in
-                TankRow(projection: projection, stale: !(state.reading?.isLive ?? false), palette: palette)
+                TankRow(projection: projection, stale: !(state.reading?.isLive ?? false), palette: palette,
+                        labelWidth: Self.labelWidth(state.account.id.vendor))
+            }
+            // Paid meters print per account (his ask 2026-09-26: "show the amount spent for each
+            // account separately"): Claude extra usage, Codex flex credits, Cursor on-demand.
+            ForEach(state.projections.filter(\.tank.isPaid), id: \.tank.key) { projection in
+                let tank = projection.tank
+                HStack {
+                    Text(tank.label).foregroundStyle(palette.dim)
+                    Spacer()
+                    Text(PaidLine.amount(tank))
+                        .fontWeight(.semibold)
+                        .foregroundStyle(PaidLine.isHot(tank) ? palette.red : palette.fg)
+                }
+                .font(.system(size: 10.5 * S))
+                .padding(.leading, (Self.labelWidth(state.account.id.vendor) + 8) * S)
+                .padding(.vertical, 1.5 * S)
+                .lineLimit(1)
             }
             if let reading = state.reading, !reading.byModel.isEmpty {
                 Text(reading.byModel.prefix(4).map { "\($0.model) \(Fmt.dollars($0.dollars))" }.joined(separator: " · "))
@@ -258,6 +274,12 @@ private struct AccountBlock: View {
             }
         }
     }
+
+    /// Design points for the label column: Cursor's pool names ("cursor models") need more than
+    /// the window names ("5-hour") do.
+    static func labelWidth(_ vendor: Vendor) -> CGFloat {
+        vendor == .cursor ? 80 : 40
+    }
 }
 
 // MARK: - Tank row
@@ -266,22 +288,25 @@ private struct TankRow: View {
     var projection: TankProjection
     var stale: Bool
     var palette: TanksPalette
+    var labelWidth: CGFloat = 40
 
     var body: some View {
         let tank = projection.tank
         VStack(spacing: 0 * S) {
             HStack(spacing: 8 * S) {
-                Text(tank.label).font(.system(size: 11 * S)).foregroundStyle(palette.dim).frame(width: 40 * S, alignment: .leading).lineLimit(1)
+                Text(tank.label).font(.system(size: 11 * S)).foregroundStyle(palette.dim).frame(width: labelWidth * S, alignment: .leading).lineLimit(1)
                 TankBar(projection: projection, stale: stale, palette: palette).frame(height: 11 * S)
                 Text(value).font(.system(size: (tank.format == .percent ? 11.5 : 10.5) * S, weight: .semibold)).frame(width: 40 * S, alignment: .trailing).lineLimit(1)
             }
+            // Left: the projection. Right: the window as start – end (his ask 2026-09-26: "show
+            // when current period starts/ends"); the tooltip carries both endpoints in full.
             HStack {
-                Text(leftNote).foregroundStyle(leftColor)
+                Text(leftNote).foregroundStyle(leftColor).minimumScaleFactor(0.85)
                 Spacer()
-                Text(rightNote)
+                Text(rightNote).layoutPriority(1).help(windowHelp)
             }
             .font(.system(size: 10.5 * S)).foregroundStyle(palette.dim)
-            .padding(.leading, 48 * S)
+            .padding(.leading, (labelWidth + 8) * S)
             .lineLimit(1)
         }
         .padding(.vertical, 1.5 * S)
@@ -317,7 +342,17 @@ private struct TankRow: View {
     }
 
     private var rightNote: String {
-        projection.tank.resetsAt.map { "↺ \(Fmt.clock($0))" } ?? ""
+        let tank = projection.tank
+        guard let end = tank.resetsAt else { return "" }
+        guard let start = tank.windowStart else { return "↺ \(Fmt.clock(end))" }
+        return Fmt.window(start, end)
+    }
+
+    private var windowHelp: String {
+        let tank = projection.tank
+        guard let end = tank.resetsAt else { return "" }
+        guard let start = tank.windowStart else { return "resets \(Fmt.fullDate(end))" }
+        return "window \(Fmt.fullDate(start)) – \(Fmt.fullDate(end))"
     }
 }
 

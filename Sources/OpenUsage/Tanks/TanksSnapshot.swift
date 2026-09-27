@@ -88,29 +88,31 @@ enum TanksSnapshot {
             Tank(key: "5-hour", label: "5-hour", used: 8, limit: 100, format: .percent, resetsAt: now.addingTimeInterval(4 * 3600), periodSeconds: 5 * 3600),
             Tank(key: "week", label: "week", used: 22, limit: 100, format: .percent, resetsAt: in3d, periodSeconds: 7 * 86400),
             Tank(key: "opus", label: "opus", used: 12, limit: 100, format: .percent, resetsAt: in3d, periodSeconds: 7 * 86400),
+            Tank(key: "credits", label: "credits (paid)", used: 3.2, limit: 50, format: .dollars, isPaid: true),
         ], fetchedAt: now)
         let codexP0 = AccountReading(account: acct(.codex, .primary), plan: "Business", tanks: [
             Tank(key: "week", label: "week", used: 36, limit: 100, format: .percent, resetsAt: in3d, periodSeconds: 7 * 86400),
-            Tank(key: "month", label: "month", used: 11880, limit: 12000, format: .credits, resetsAt: in12d, periodSeconds: 30 * 86400, note: "spend control, credits"),
+            Tank(key: "month", label: "month", used: 11880, limit: 12000, format: .credits, resetsAt: in12d, periodSeconds: 30 * 86400, note: "spend control"),
         ], fetchedAt: earlier)
         let codexP = AccountReading(account: acct(.codex, .primary), plan: "Business", tanks: [
             Tank(key: "week", label: "week", used: 37, limit: 100, format: .percent, resetsAt: in3d, periodSeconds: 7 * 86400),
-            Tank(key: "month", label: "month", used: 11893, limit: 12000, format: .credits, resetsAt: in12d, periodSeconds: 30 * 86400, note: "spend control, credits"),
+            Tank(key: "month", label: "month", used: 11893, limit: 12000, format: .credits, resetsAt: in12d, periodSeconds: 30 * 86400, note: "spend control"),
         ], fetchedAt: now)
         let codexS = AccountReading(account: acct(.codex, .secondary), plan: nil, tanks: [], fetchedAt: now,
                                     status: .signedOut(reason: "run: CODEX_HOME=~/.codex-tanks/secondary codex login"))
+        let cycleStart = Calendar.current.date(byAdding: .month, value: -1, to: in12d)
+        let team = Tank(key: "team", label: "team on-demand", used: 13250.5, limit: 28500, format: .dollars,
+                        resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart, isPaid: true)
         let cursorP = AccountReading(account: acct(.cursor, .primary), plan: "tier 2000", tanks: [
-            Tank(key: "month", label: "month", used: 15, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
-            Tank(key: "auto", label: "auto", used: 13, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
-            Tank(key: "api", label: "api", used: 25, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
-            Tank(key: "spend", label: "spend", used: 129.42, limit: 0, format: .dollars, isPaid: true, note: "no limit"),
-        ], fetchedAt: now)
+            Tank(key: "auto", label: "cursor models", used: 13, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
+            Tank(key: "api", label: "other models", used: 51, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
+            Tank(key: "spend", label: "on-demand", used: 129.42, limit: 0, format: .dollars, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart, isPaid: true, note: "no limit"),
+        ], teamPaid: team, fetchedAt: now)
         let cursorS = AccountReading(account: acct(.cursor, .secondary), plan: "tier 2000", tanks: [
-            Tank(key: "month", label: "month", used: 51, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
-            Tank(key: "auto", label: "auto", used: 57, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
-            Tank(key: "api", label: "api", used: 21, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400),
-            Tank(key: "spend", label: "spend", used: 713.58, limit: 0, format: .dollars, isPaid: true, note: "no limit"),
-        ], fetchedAt: now)
+            Tank(key: "auto", label: "cursor models", used: 57, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
+            Tank(key: "api", label: "other models", used: 21, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
+            Tank(key: "spend", label: "on-demand", used: 713.58, limit: 0, format: .dollars, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart, isPaid: true, note: "no limit"),
+        ], teamPaid: team, fetchedAt: now)
         return [claudeP0, claudeP, claudeS, codexP0, codexP, codexS, cursorP, cursorS]
     }
 }

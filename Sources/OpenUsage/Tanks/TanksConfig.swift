@@ -34,6 +34,10 @@ struct TanksConfig: Sendable, Codable {
     var cursorAdminKeyKeychainService = "tanks-cursor-admin-key"
     /// The Cursor account normally used; the Admin API does not say which client is signed in.
     var cursorActiveSlot: AccountSlot = .primary
+    /// The team's monthly on-demand cap in dollars. The Admin API does not return it; the value is
+    /// what the dashboard's `get-hard-limit` reported for team 7238493 on 2026-09-26 (28500), and
+    /// `~/.config/tanks/config.json` overrides it when the team changes the cap.
+    var cursorTeamOnDemandLimitDollars: Double? = 28500
 
     var pollInterval: TimeInterval = 60
     /// Claude's usage endpoint admits roughly one read per two minutes per token (measured
