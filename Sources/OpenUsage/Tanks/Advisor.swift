@@ -212,7 +212,9 @@ enum Fmt {
     /// The current window as a range, sized for the row under a bar: `16:00 – 21:00` inside one
     /// day, `Sat 22:00 – Sun 03:00` under two days, `Sep 19 – Sep 26 20:00` when both ends share
     /// a time of day (every fixed-length window does), else `Sep 1 11:24 – Oct 1 11:24`.
-    static func window(_ start: Date, _ end: Date) -> String {
+    /// `withTime: false` drops the clock from multi-day ranges (`Sep 1 – Oct 1`) for rows where
+    /// the projection needs the room; the tooltip still carries the full endpoints.
+    static func window(_ start: Date, _ end: Date, withTime: Bool = true) -> String {
         let cal = Calendar.current
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -226,7 +228,7 @@ enum Fmt {
         }
         let startTime = cal.dateComponents([.hour, .minute], from: start)
         let endTime = cal.dateComponents([.hour, .minute], from: end)
-        if startTime == endTime {
+        if startTime == endTime || !withTime {
             f.dateFormat = "MMM d"
             let t = DateFormatter()
             t.locale = f.locale
@@ -234,7 +236,8 @@ enum Fmt {
             // Same month: `Sep 23 – 30 01:47`; the row under a bar has no room for the month twice.
             let endText = cal.isDate(start, equalTo: end, toGranularity: .month)
                 ? "\(cal.component(.day, from: end))" : f.string(from: end)
-            return "\(f.string(from: start)) – \(endText) \(t.string(from: end))"
+            let time = withTime && startTime == endTime ? " \(t.string(from: end))" : ""
+            return "\(f.string(from: start)) – \(endText)\(time)"
         }
         f.dateFormat = "MMM d HH:mm"
         return "\(f.string(from: start)) – \(f.string(from: end))"

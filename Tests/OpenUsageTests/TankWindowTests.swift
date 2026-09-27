@@ -26,6 +26,12 @@ final class TankWindowTests: XCTestCase {
         XCTAssertEqual(Fmt.window(date(2026, 9, 1, 11, 24), date(2026, 10, 1, 11, 24)), "Sep 1 – Oct 1 11:24")
     }
 
+    func testWindowWithoutTimeKeepsOnlyTheDays() {
+        XCTAssertEqual(Fmt.window(date(2026, 9, 1, 11, 24), date(2026, 10, 1, 11, 24), withTime: false), "Sep 1 – Oct 1")
+        XCTAssertEqual(Fmt.window(date(2026, 9, 20, 20, 59), date(2026, 9, 27, 20, 59), withTime: false), "Sep 20 – 27")
+        XCTAssertEqual(Fmt.window(date(2026, 9, 26, 16, 30), date(2026, 9, 26, 21, 30), withTime: false), "16:30 – 21:30")
+    }
+
     func testWindowWithDifferentTimesOfDayPrintsBoth() {
         XCTAssertEqual(Fmt.window(date(2026, 9, 1, 11, 24), date(2026, 10, 1, 9, 0)), "Sep 1 11:24 – Oct 1 09:00")
     }

@@ -298,12 +298,17 @@ private struct TankRow: View {
                 TankBar(projection: projection, stale: stale, palette: palette).frame(height: 11 * S)
                 Text(value).font(.system(size: (tank.format == .percent ? 11.5 : 10.5) * S, weight: .semibold)).frame(width: 40 * S, alignment: .trailing).lineLimit(1)
             }
-            // Left: the projection. Right: the window as start – end (his ask 2026-09-26: "show
-            // when current period starts/ends"); the tooltip carries both endpoints in full.
+            // Left: the projection, which keeps its full text (his 2026-09-26 screenshot: "100%
+            // a…" was unreadable). Right: the window as start – end (his ask the same day: "show
+            // when current period starts/ends"), shortened step by step until it fits beside the
+            // projection; the tooltip carries both endpoints in full.
             HStack {
-                Text(leftNote).foregroundStyle(leftColor).minimumScaleFactor(0.85)
-                Spacer()
-                Text(rightNote).layoutPriority(1).help(windowHelp)
+                Text(leftNote).foregroundStyle(leftColor).layoutPriority(1)
+                Spacer(minLength: 6 * S)
+                ViewThatFits(in: .horizontal) {
+                    ForEach(rightNoteVariants, id: \.self) { Text($0) }
+                }
+                .help(windowHelp)
             }
             .font(.system(size: 10.5 * S)).foregroundStyle(palette.dim)
             .padding(.leading, (labelWidth + 8) * S)
@@ -341,11 +346,15 @@ private struct TankRow: View {
         return palette.dim
     }
 
-    private var rightNote: String {
+    /// Longest first: `Sep 1 – Oct 1 11:24`, then `Sep 1 – Oct 1`, then `↺ Oct 1 11:24`.
+    private var rightNoteVariants: [String] {
         let tank = projection.tank
-        guard let end = tank.resetsAt else { return "" }
-        guard let start = tank.windowStart else { return "↺ \(Fmt.clock(end))" }
-        return Fmt.window(start, end)
+        guard let end = tank.resetsAt else { return [""] }
+        let endOnly = "↺ \(Fmt.clock(end))"
+        guard let start = tank.windowStart else { return [endOnly] }
+        let variants = [Fmt.window(start, end), Fmt.window(start, end, withTime: false), endOnly]
+        var seen = Set<String>()
+        return variants.filter { seen.insert($0).inserted }
     }
 
     private var windowHelp: String {
