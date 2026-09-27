@@ -67,6 +67,15 @@ enum Advisor {
             // three minutes after launch, or a burst that landed between polls).
             guard let crossesAt = projection.crossesAt
                 ?? (projection.fill >= switchNowFill ? (tank.resetsAt ?? now) : nil) else { continue }
+            // A second included pool on the same account comes before any account switch: on
+            // 2026-09-27 the strip said "switch to admin-konstantin" while konstantin's other
+            // models sat at 100% and its cursor models at 13% (his correction).
+            if let fallback = samePoolFallback(active.account.id.vendor, tank.key),
+               let spare = active.projection(fallback.key), spare.fill < switchNowFill {
+                out.append(poolAdvice(active: active, projection: projection, crossesAt: crossesAt,
+                                      fallback: fallback, spare: spare, now: now))
+                continue
+            }
             let otherFill = other?.projection(tank.key)?.fill
             // A switch only helps when every window on the other account is usable: on
             // 2026-09-26 the strip said "switch to admin-konstantin, 5-hour at 0%" while that
@@ -86,7 +95,7 @@ enum Advisor {
                 ? "is at \(Fmt.percent(projection.fill))"
                 : "hits 100% at \(Fmt.clock(crossesAt))"
             let base = "\(vendor(active)) / \(active.account.label) \(tank.label) \(when) — \(otherText)."
-            let detail = projection.ratePerHour.map { "burn \(Fmt.rate($0, tank))/h" }
+            let detail = burnDetail(projection)
             if urgent && otherHasRoom, let other {
                 out.append(Advice(
                     key: "switch-now:\(active.account.id):\(tank.key):\(Fmt.windowStamp(tank))",
@@ -112,6 +121,68 @@ enum Advisor {
             }
         }
         return out
+    }
+
+    /// A second included pool on the same account that takes the work once `key` is spent.
+    /// Cursor's dashboard (2026-09-27): Cursor Models "Additional usage beyond limits consumes
+    /// Other Models quota or on-demand spend"; Other Models "consumes on-demand spend". So a spent
+    /// cursor-models pool spills into other models on its own, and a spent other-models pool bills
+    /// on-demand unless the work moves to a Cursor model by hand.
+    struct SamePoolFallback: Sendable, Equatable {
+        var key: String
+        /// The vendor moves the work itself; nothing for him to do.
+        var automatic: Bool
+        /// What to pick by hand when `automatic` is false.
+        var models: String
+    }
+
+    static func samePoolFallback(_ vendor: Vendor, _ key: String) -> SamePoolFallback? {
+        guard vendor == .cursor else { return nil }
+        switch key {
+        case "api": return SamePoolFallback(key: "auto", automatic: false, models: "Auto, Composer or Grok")
+        case "auto": return SamePoolFallback(key: "api", automatic: true, models: "")
+        default: return nil
+        }
+    }
+
+    /// The advice for a window whose same-account fallback still has room: move models (or, for an
+    /// automatic spill, just a note). It never offers the account switch; that returns once the
+    /// fallback pool itself reaches the switch-now level.
+    private static func poolAdvice(active: AccountAssessment, projection: TankProjection, crossesAt: Date,
+                                   fallback: SamePoolFallback, spare: TankProjection, now: Date) -> Advice {
+        let tank = projection.tank
+        let urgent = projection.fill >= switchNowFill || crossesAt.timeIntervalSince(now) <= switchNowMinutes
+        let when = projection.crossesAt == nil
+            ? "is at \(Fmt.percent(projection.fill))"
+            : "hits 100% at \(Fmt.clock(crossesAt))"
+        let head = "\(vendor(active)) / \(active.account.label) \(tank.label) \(when) — \(spare.tank.label) at \(Fmt.percent(spare.fill))."
+        let stamp = Fmt.windowStamp(tank)
+        if fallback.automatic {
+            return Advice(
+                key: "spills:\(active.account.id):\(tank.key):\(stamp)",
+                severity: .info, vendor: active.account.id.vendor,
+                text: head + " Past 100% the work draws on \(spare.tank.label) by itself.",
+                detail: burnDetail(projection)
+            )
+        }
+        let tail = projection.fill >= 1
+            ? " Use \(fallback.models): they stay included, \(tank.label) now bill on-demand."
+            : " Move to \(fallback.models) before then: past 100% \(tank.label) bill on-demand."
+        return Advice(
+            key: "use-pool:\(active.account.id):\(tank.key):\(stamp)",
+            severity: urgent ? .warn : .info, vendor: active.account.id.vendor,
+            text: (urgent ? "Switch model — " : "") + head + tail,
+            detail: burnDetail(projection), notifies: urgent
+        )
+    }
+
+    /// `burn 12%/h`, or nothing when the rate rounds to zero (a full pool has nothing left to burn;
+    /// "burn 0%/h" under a 100% bar read as a contradiction, 2026-09-27).
+    private static func burnDetail(_ projection: TankProjection) -> String? {
+        guard let rate = projection.ratePerHour else { return nil }
+        let text = Fmt.rate(rate, projection.tank)
+        guard !["0", "0%", "$0.00"].contains(text) else { return nil }
+        return "burn \(text)/h"
     }
 
     /// The fullest other-account window at or past the switch-now level, other than the one being

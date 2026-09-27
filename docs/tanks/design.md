@@ -82,6 +82,15 @@ where the admin account buys a better source.
    send work. Cross-vendor advice is this rule read across vendors.
 4. **Credits guard** — paid overflow (Claude credits, Codex spend control, Cursor hard limit) ≥ 80%
    of its monthly cap: red regardless of window state, because past 100% every turn bills.
+5. **Switch model before account** (2026-09-27, his correction: the strip said "switch to
+   admin-konstantin" while konstantin's Cursor other models sat at 100% and cursor models at 13%).
+   Cursor's two included pools overflow in one direction, per its dashboard: spent cursor models
+   draw on other models, spent other models bill on-demand. So when other models cross 100% and
+   cursor models on the same account are below 90%, the strip says "Switch model — use Auto,
+   Composer or Grok" (amber, one notification, no account button); when cursor models cross 100%
+   with other models below 90%, it prints an info line that the work spills over by itself. Rules
+   1 and 2 return once the fallback pool reaches 90% too. The menu-bar glyph skips a pool whose
+   fallback still has room, so it no longer sits on 100% for the rest of the cycle.
 
 Recommendations expire when their condition clears; a dismissed one stays quiet for its window.
 

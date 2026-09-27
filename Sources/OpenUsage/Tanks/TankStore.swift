@@ -63,8 +63,18 @@ final class TankStore {
     /// Percent and credit tanks both fill against a cap; only dollar tanks (uncapped spend) have
     /// no meaningful fill. Codex's month is a credit tank, and leaving it out let the glyph say
     /// 25% while the strip alerted on that month at 99% (2026-09-26).
+    ///
+    /// A pool whose same-account fallback still has room is not what runs dry: Cursor's other
+    /// models at 100% with cursor models at 13% left the glyph on 100% for the rest of the cycle.
     var bindingProjection: TankProjection? {
-        Self.binding(among: states.values.filter(\.isActive).flatMap(\.projections))
+        Self.binding(among: states.values.filter(\.isActive).flatMap { state in
+            state.projections.filter { p in
+                guard let fallback = Advisor.samePoolFallback(state.account.id.vendor, p.tank.key),
+                      let spare = state.projections.first(where: { $0.tank.key == fallback.key })
+                else { return true }
+                return spare.fill >= Advisor.switchNowFill
+            }
+        })
     }
 
     static func binding(among projections: [TankProjection]) -> TankProjection? {

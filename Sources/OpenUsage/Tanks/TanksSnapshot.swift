@@ -105,7 +105,7 @@ enum TanksSnapshot {
                         resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart, isPaid: true)
         let cursorP = AccountReading(account: acct(.cursor, .primary), plan: "tier 2000", tanks: [
             Tank(key: "auto", label: "cursor models", used: 13, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
-            Tank(key: "api", label: "other models", used: 51, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
+            Tank(key: "api", label: "other models", used: 100, limit: 100, format: .percent, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart),
             Tank(key: "spend", label: "on-demand", used: 129.42, limit: 0, format: .dollars, resetsAt: in12d, periodSeconds: 30 * 86400, startsAt: cycleStart, isPaid: true, note: "no limit"),
         ], teamPaid: team, fetchedAt: now)
         let cursorS = AccountReading(account: acct(.cursor, .secondary), plan: "tier 2000", tanks: [

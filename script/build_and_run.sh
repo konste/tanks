@@ -39,6 +39,20 @@ ICONSET="$ROOT_DIR/assets/Tanks.iconset"
 
 pkill -x "$TARGET_NAME" >/dev/null 2>&1 || true
 
+# The macOS 27 Command Line Tools default to the 27 SDK, whose SwiftUI expands @State through the
+# SwiftUIMacros compiler plugin; only Xcode ships that plugin, so a CLT-only Mac fails with
+# "plugin for module 'SwiftUIMacros' not found" (2026-09-27). Fall back to the newest 26.x SDK.
+if [[ -z "${SDKROOT:-}" && "$(xcode-select -p)" == */CommandLineTools ]]; then
+  CLT_SDKS=/Library/Developer/CommandLineTools/SDKs
+  if [[ -d "$CLT_SDKS/MacOSX27.sdk" ]]; then
+    FALLBACK_SDK="$(ls -d "$CLT_SDKS"/MacOSX26.*.sdk 2>/dev/null | sort -V | tail -1)"
+    if [[ -n "$FALLBACK_SDK" ]]; then
+      export SDKROOT="$FALLBACK_SDK"
+      echo "==> CLT-only toolchain with the 27 SDK; building against $(basename "$FALLBACK_SDK")"
+    fi
+  fi
+fi
+
 echo "==> swift build ($CONFIG)"
 swift build -c "$CONFIG"
 BUILD_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
