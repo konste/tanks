@@ -64,7 +64,9 @@ where the admin account buys a better source.
 ## Advisor (rule-based, every rule names its two numbers)
 
 1. **Switch now** — active account's window is projected to cross 100% before reset and the
-   other account's same window has ≥ 30% headroom; fires when fill ≥ 90% or time-to-100% < 20
+   other account's same window has ≥ 30% headroom and none of its other windows is at ≥ 90% (a
+   switch lands on every window at once — 2026-09-26 it advised a switch onto an account whose
+   week was at 100%, his correction); fires when fill ≥ 90% or time-to-100% < 20
    min. Strip goes to state C, panel promotes the recommendation with a button.
 2. **Switch later** — same condition but > 1 h away: "switch at HH:MM" with a scheduled reminder
    (or, opt-in, run the switch at that time; `acc` still asks for Touch ID, so only while present).

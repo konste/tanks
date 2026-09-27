@@ -68,12 +68,19 @@ enum Advisor {
             guard let crossesAt = projection.crossesAt
                 ?? (projection.fill >= switchNowFill ? (tank.resetsAt ?? now) : nil) else { continue }
             let otherFill = other?.projection(tank.key)?.fill
-            let otherHasRoom = otherFill.map { 1 - $0 >= otherHeadroom } ?? false
+            // A switch only helps when every window on the other account is usable: on
+            // 2026-09-26 the strip said "switch to admin-konstantin, 5-hour at 0%" while that
+            // account's week sat at 100% (his correction). The matching window needs 30%
+            // headroom and no other window there may be at the switch-now level.
+            let blocked = other.flatMap { blockingWindow(on: $0, except: tank.key) }
+            let otherHasRoom = (otherFill.map { 1 - $0 >= otherHeadroom } ?? false) && blocked == nil
             let minutesToFull = crossesAt.timeIntervalSince(now)
             let urgent = projection.fill >= switchNowFill || minutesToFull <= switchNowMinutes
             let otherText = other.map { o in
-                otherFill.map { "\(o.account.label) \(tank.label) at \(Fmt.percent($0))" }
-                    ?? "\(o.account.label) has no reading"
+                guard let otherFill else { return "\(o.account.label) has no reading" }
+                let same = "\(o.account.label) \(tank.label) at \(Fmt.percent(otherFill))"
+                guard let blocked, 1 - otherFill >= otherHeadroom else { return same }
+                return same + " but its \(blocked.tank.label) at \(Fmt.percent(blocked.fill))"
             } ?? "no second account"
             let when = projection.crossesAt == nil
                 ? "is at \(Fmt.percent(projection.fill))"
@@ -105,6 +112,14 @@ enum Advisor {
             }
         }
         return out
+    }
+
+    /// The fullest other-account window at or past the switch-now level, other than the one being
+    /// compared; a switch lands on it straight away, so it makes the other account unusable.
+    static func blockingWindow(on other: AccountAssessment, except key: String) -> TankProjection? {
+        other.projections
+            .filter { !$0.tank.isPaid && $0.tank.key != key && $0.fill >= switchNowFill }
+            .max { $0.fill < $1.fill }
     }
 
     /// Rule 4: a paid overflow at 80% of its monthly cap is red regardless of window state.
@@ -200,8 +215,10 @@ enum Fmt {
         return "\(Int(seconds / 60)) min"
     }
 
-    /// Identifies the window instance: advice keyed on it clears itself at the reset.
+    /// Identifies the window instance: advice keyed on it clears itself at the reset. Rounded to
+    /// the minute: Codex reports its month reset a second later on some polls (…800 then …801 on
+    /// 2026-09-26), and every drift minted a new key and a repeat notification.
     static func windowStamp(_ tank: Tank) -> String {
-        tank.resetsAt.map { String(Int($0.timeIntervalSince1970)) } ?? "-"
+        tank.resetsAt.map { String(Int(($0.timeIntervalSince1970 / 60).rounded()) * 60) } ?? "-"
     }
 }
