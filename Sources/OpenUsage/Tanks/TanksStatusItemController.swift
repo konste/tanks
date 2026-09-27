@@ -3,7 +3,9 @@ import SwiftUI
 
 /// The status item and the fixed-size panel that hosts `TanksDashboardView`. Same panel class and
 /// outside-click monitor as upstream's controller; no height morphing, no transparency modes, the
-/// appearance follows the system.
+/// appearance follows the system. The panel is draggable by its background (the header carries a
+/// drag gesture too, for the areas SwiftUI claims) and reopens where it was last dragged; see
+/// `TanksPanelPlacement` for the first-open position.
 @MainActor
 final class TanksStatusItemController: NSObject {
     private static let autosaveName = "tanks"
@@ -18,6 +20,9 @@ final class TanksStatusItemController: NSObject {
     private let panel: MenuBarPanel
     private let hosting: NSHostingController<AnyView>
     private var lastImage: NSImage?
+    /// Set while `showPanel` positions the panel itself, so that move is not saved as a drag.
+    private var isPositioning = false
+    private var moveObserver: NSObjectProtocol?
     private lazy var outsideClickMonitor = PanelOutsideClickMonitor(
         panel: panel,
         statusItem: statusItem,
@@ -76,7 +81,8 @@ final class TanksStatusItemController: NSObject {
         panel.level = .popUpMenu
         panel.hidesOnDeactivate = false
         panel.hasShadow = true
-        panel.isMovable = false
+        panel.isMovable = true
+        panel.isMovableByWindowBackground = true
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.animationBehavior = .none
@@ -84,7 +90,7 @@ final class TanksStatusItemController: NSObject {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.appearance = nil
 
-        let content = NSView()
+        let content = DraggableContentView()
         let host = hosting.view
         host.translatesAutoresizingMaskIntoConstraints = false
         host.wantsLayer = true
@@ -102,6 +108,18 @@ final class TanksStatusItemController: NSObject {
         root.view = content
         root.addChild(hosting)
         panel.contentViewController = root
+
+        moveObserver = NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: panel, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, !self.isPositioning, self.panel.isVisible else { return }
+                TanksPanelPlacement.save(self.panel.frame.origin)
+            }
+        }
+    }
+
+    /// Lets a mouse-down that no SwiftUI control claims start a window drag.
+    private final class DraggableContentView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
     }
 
     // MARK: - Menu bar image
@@ -152,6 +170,9 @@ final class TanksStatusItemController: NSObject {
         menu.addItem(ClosureMenuItem(title: "Refresh", systemSymbol: "arrow.clockwise", keyEquivalent: "r") { [weak self] in
             self?.container.store.refreshAll()
         })
+        menu.addItem(ClosureMenuItem(title: "Reset Panel Position", systemSymbol: "arrow.uturn.backward", keyEquivalent: "") {
+            TanksPanelPlacement.reset()
+        })
         menu.addItem(.separator())
         menu.addItem(ClosureMenuItem(title: "Quit Tanks", systemSymbol: "power", keyEquivalent: "q") {
             NSApplication.shared.terminate(nil)
@@ -165,8 +186,16 @@ final class TanksStatusItemController: NSObject {
         guard let button = statusItem.button, let window = button.window else { return }
         let buttonRect = window.convertToScreen(button.convert(button.bounds, to: nil))
         let screen = NSScreen.screens.first { $0.frame.intersects(buttonRect) } ?? NSScreen.main
-        let topLeft = PanelGeometry.clampedTopLeft(below: buttonRect, width: TanksDashboardView.size.width, visibleFrame: screen?.visibleFrame)
-        panel.setFrame(PanelGeometry.frame(topLeft: topLeft, width: TanksDashboardView.size.width, height: TanksDashboardView.size.height), display: false)
+        let visible = screen?.visibleFrame ?? NSRect(origin: .zero, size: TanksDashboardView.size)
+        let origin = TanksPanelPlacement.origin(
+            saved: TanksPanelPlacement.load(),
+            size: TanksDashboardView.size,
+            visibleFrame: visible,
+            menuBarBottom: buttonRect.minY
+        )
+        isPositioning = true
+        panel.setFrame(NSRect(origin: origin, size: TanksDashboardView.size), display: false)
+        isPositioning = false
         container.store.reproject()
         hosting.view.layoutSubtreeIfNeeded()
         panel.makeKeyAndOrderFront(nil)

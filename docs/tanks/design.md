@@ -104,7 +104,7 @@ an option, off by default. (This contradicts the 2026-09-19 "email only" policy 
 ## Panel shape (revised 2026-09-26, his instruction: no scrolling, landscape, width > height)
 
 `mock2.html` (rendered: `panel-dark.png`, `panel-light.png`, `panel-alert.png`). A fixed
-1040 × 573 px popover (the 780 × 430 design scaled by 4/3 on 2026-09-26, his ask: "1/3 larger in both directions"; every size in `TanksDashboardView` is a design literal times `S`), ratio ~1.8:1, nothing scrolls. Three vendor columns side by side, each
+1040 × 600 px popover (the 780 × 430 design scaled by 4/3 on 2026-09-26, his ask: "1/3 larger in both directions", plus 20 design points for advice lines that wrap; every size in `TanksDashboardView` is a design literal times `S`), ratio ~1.7:1, nothing scrolls. The panel is draggable by any non-interactive area (header included) and reopens where it was left, clamped to the screen; first open is pinned to the left screen edge under the menu bar (his ask the same day). Right-click menu: Reset Panel Position. Advice lines wrap to two lines with the burn detail trailing in the dim style; the full text is the tooltip. Three vendor columns side by side, each
 with the active account on top and the other account below it, one bar per window, the paid
 line pinned to the column's bottom. Advice strip across the top (at most two lines), legend in
 the footer. Everything that was vertical in the first mock is now horizontal, which is what took

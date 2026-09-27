@@ -5,11 +5,11 @@ import SwiftUI
 /// directions").
 let S: CGFloat = 4.0 / 3.0
 
-/// The fixed 1040×573 panel (780×430 × S): header, advice strip, three vendor columns, legend footer. Nothing
+/// The fixed 1040×600 panel (780×450 × S; the extra 20 design points are room for advice lines that wrap): header, advice strip, three vendor columns, legend footer. Nothing
 /// scrolls; the column content is sized to fit the tallest vendor (Claude: two accounts × up to
 /// four windows plus the paid line).
 struct TanksDashboardView: View {
-    static let size = CGSize(width: 780 * S, height: 430 * S)
+    static let size = CGSize(width: 780 * S, height: 450 * S)
 
     @Environment(TanksContainer.self) private var container
     @Environment(\.colorScheme) private var scheme
@@ -47,6 +47,8 @@ struct TanksDashboardView: View {
         .padding(.horizontal, 14 * S)
         .padding(.top, 9 * S)
         .padding(.bottom, 7 * S)
+        .contentShape(Rectangle())
+        .gesture(WindowDragGesture())
     }
 
     private func footer(_ p: TanksPalette) -> some View {
@@ -97,15 +99,17 @@ private struct AdviceRow: View {
     var palette: TanksPalette
 
     var body: some View {
-        HStack(spacing: 8 * S) {
+        HStack(alignment: .top, spacing: 8 * S) {
             Circle().fill(palette.severity(advice.severity)).frame(width: 8 * S, height: 8 * S)
-            HStack(spacing: 6 * S) {
-                Text(advice.text).lineLimit(1).truncationMode(.tail)
-                if let detail = advice.detail {
-                    Text(detail).foregroundStyle(palette.dim).font(.system(size: 11 * S))
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 5 * S)
+            // One paragraph, detail trailing in the dim style, wrapping to a second line when the
+            // advice is long (it nearly always is, his observation 2026-09-26); the tooltip
+            // carries the full text for the rare third line.
+            (Text(advice.text) + Text(advice.detail.map { "  \($0)" } ?? "").foregroundColor(palette.dim).font(.system(size: 11 * S)))
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(advice.detail.map { "\(advice.text)  \($0)" } ?? advice.text)
             if case .switchTo(let target) = advice.action {
                 Button("Switch to \(container.config.account(target).label)") {
                     container.performSwitch(to: target)
