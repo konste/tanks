@@ -43,6 +43,16 @@ struct TanksDashboardView: View {
             Text("Tanks").font(.system(size: 14 * S, weight: .bold))
             Spacer()
             Text(container.headerMeta).font(.system(size: 11.5 * S)).foregroundStyle(p.dim)
+            // The panel is a borderless popover with no title bar, so it carried no visible way to
+            // dismiss it beyond clicking the menu-bar icon again or clicking outside (his 2026-09-27
+            // report: no traffic light, and Esc did nothing). Esc now closes it too (MenuBarPanel's
+            // onEscape); this button is the visible affordance for the same action.
+            Button { container.requestClose() } label: {
+                Image(systemName: "xmark.circle.fill").font(.system(size: 13 * S))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(p.dim)
+            .help("Close (Esc)")
         }
         .padding(.horizontal, 14 * S)
         .padding(.top, 9 * S)
@@ -70,7 +80,7 @@ struct TanksDashboardView: View {
             .help(container.launchAtLogin.errorMessage ?? "macOS login item for this app; also in System Settings → General → Login Items")
             .onAppear { container.launchAtLogin.refreshStatus() }
             Spacer()
-            Text("solid = used · hatched = projected by reset · red tick = crosses 100% first · blue = idle or not signed in")
+            Text("solid = used · hatch colour = risk by reset (red crosses 100%, amber close) · blue = idle or not signed in")
                 .foregroundStyle(p.dim)
         }
         .font(.system(size: 11 * S))
@@ -389,24 +399,46 @@ private struct TankBar: View {
             let w = geo.size.width
             let used = w * projection.fill
             let projected = w * (projection.projectedFill ?? projection.fill)
+            let hasProjection = projected > used + S
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 3 * S).fill(palette.track)
                 RoundedRectangle(cornerRadius: 3 * S)
                     .fill(stale ? palette.dim2 : palette.tier(projection.tier))
                     .frame(width: max(used, projection.fill > 0 ? 3 * S : 0))
-                if projected > used + S {
-                    Hatch(color: palette.hatch)
+                if hasProjection {
+                    // The verdict is the hatch's own colour — red once the projection crosses 100%
+                    // before reset, amber when it lands close without crossing — so nothing extra
+                    // has to be read off a separate mark. A fixed red tick at the right edge used to
+                    // sit right where a red-crossing hatch already ended, saying the same thing
+                    // twice in two hard-to-parse shapes (his 2026-09-27 correction).
+                    Hatch(color: hatchColor)
                         .frame(width: projected - used)
                         .clipShape(RoundedRectangle(cornerRadius: 3 * S))
                         .offset(x: used)
-                }
-                if projection.crossesAt != nil {
-                    RoundedRectangle(cornerRadius: 2 * S).fill(palette.red)
-                        .frame(width: 3 * S, height: geo.size.height + 4 * S)
-                        .offset(x: w - S, y: -2 * S)
+                    // "Now": the one boundary the bar adds beyond the numbers already printed below
+                    // it — where today's usage ends and the projection to reset begins.
+                    Rectangle().fill(palette.fg.opacity(0.5)).frame(width: 1 * S, height: geo.size.height).offset(x: used)
                 }
             }
         }
+        .help(barHelp)
+    }
+
+    private var hatchColor: Color {
+        switch projection.tier {
+        case .red: palette.red
+        case .amber: palette.amber
+        case .green, .idle, .signedOut: palette.hatch
+        }
+    }
+
+    private var barHelp: String {
+        let tank = projection.tank
+        var text = "\(Fmt.amount(tank.used, tank)) used"
+        if let projectedFill = projection.projectedFill {
+            text += " · projected \(Fmt.percent(projectedFill)) by reset"
+        }
+        return text
     }
 }
 

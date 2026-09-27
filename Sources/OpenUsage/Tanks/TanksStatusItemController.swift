@@ -52,6 +52,8 @@ final class TanksStatusItemController: NSObject {
         )
         super.init()
         configurePanel()
+        panel.onEscape = { [weak self] in self?.hidePanel() }
+        container.onRequestClose = { [weak self] in self?.hidePanel() }
         if let button = statusItem.button {
             button.target = self
             button.action = #selector(statusButtonClicked)

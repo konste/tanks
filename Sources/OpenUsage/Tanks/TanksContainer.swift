@@ -11,6 +11,9 @@ final class TanksContainer {
     let actions: SwitchActions
     /// The macOS login item for this bundle; seeded on first live launch, switchable in the footer.
     let launchAtLogin = LaunchAtLoginSetting()
+    /// Set by `TanksStatusItemController` to its `hidePanel`; the header's close button and the
+    /// panel's Esc key both call this rather than reaching for AppKit themselves.
+    @ObservationIgnored var onRequestClose: (() -> Void)?
     /// The last switch outcome, shown in the header for a while.
     private(set) var notice: String?
 
@@ -71,6 +74,10 @@ final class TanksContainer {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss"
         return "\(f.string(from: tick)) · \(cadence) · \(live) of \(store.states.count) fresh"
+    }
+
+    func requestClose() {
+        onRequestClose?()
     }
 
     func performSwitch(to id: TankAccountID) {

@@ -55,9 +55,13 @@ where the admin account buys a better source.
 - Keep an in-memory ring of samples per tank (last 60 min for 5-hour windows, last 12 h for
   weekly/monthly) purely to compute a slope; it is never shown. Slope = least-squares over the
   ring, floored at 0, dropping the segment that spans a reset.
-- Projection at reset = used + slope × time-to-reset, drawn as the hatched extension. Crossing
-  100% before the reset gives the red tick and a "100% at HH:MM" label; the time is the one the
-  advisor quotes.
+- Projection at reset = used + slope × time-to-reset, drawn as the hatched extension; a thin line
+  at its start marks where today's usage ends and the projection begins. The hatch's own colour
+  carries the verdict — red once it crosses 100% before the reset, amber when it lands close
+  without crossing — and a "100% at HH:MM" label states the time the advisor quotes. (Revised
+  2026-09-27: a fixed red tick at the bar's right edge used to carry the crossing verdict
+  separately from the hatch, landing in the same place a crossing hatch already reached and saying
+  the same thing twice — his correction, "hard to interpret".)
 - Colour: green on course; amber = projected to land in the last 10% or fill ≥ 80%; red =
   projected to cross 100% or fill ≥ 92% (the probe's tiers).
 - Under each bar, right side: the current window as `start – end` (`16:30 – 21:30`, `Sep 26 – Oct 3
@@ -127,7 +131,7 @@ The first live launch registers the bundle as a macOS login item (`SMAppService.
 ## Panel shape (revised 2026-09-26, his instruction: no scrolling, landscape, width > height)
 
 `mock2.html` (rendered: `panel-dark.png`, `panel-light.png`, `panel-alert.png`). A fixed
-1040 × 600 px popover (the 780 × 430 design scaled by 4/3 on 2026-09-26, his ask: "1/3 larger in both directions", plus 20 design points for advice lines that wrap; every size in `TanksDashboardView` is a design literal times `S`), ratio ~1.7:1, nothing scrolls. The panel is draggable by any non-interactive area (header included) and reopens where it was left, clamped to the screen; first open is pinned to the left screen edge under the menu bar (his ask the same day). Right-click menu: Reset Panel Position. Advice lines wrap to two lines with the burn detail trailing in the dim style; the full text is the tooltip. Three vendor columns side by side, each
+1040 × 600 px popover (the 780 × 430 design scaled by 4/3 on 2026-09-26, his ask: "1/3 larger in both directions", plus 20 design points for advice lines that wrap; every size in `TanksDashboardView` is a design literal times `S`), ratio ~1.7:1, nothing scrolls. The panel is draggable by any non-interactive area (header included) and reopens where it was left, clamped to the screen; first open is pinned to the left screen edge under the menu bar (his ask the same day). It is a borderless AppKit panel with no title bar, so it carries no traffic lights; it closes on a click outside, on the menu-bar icon, on Esc (`MenuBarPanel.onEscape`, AppKit's standard `cancelOperation(_:)` route), or on the header's close button (his 2026-09-27 report: neither Esc nor a visible control existed). Right-click menu: Reset Panel Position. Advice lines wrap to two lines with the burn detail trailing in the dim style; the full text is the tooltip. Three vendor columns side by side, each
 with the active account on top and the other account below it, one bar per window, the paid
 line pinned to the column's bottom. Advice strip across the top (at most two lines), legend in
 the footer. Everything that was vertical in the first mock is now horizontal, which is what took

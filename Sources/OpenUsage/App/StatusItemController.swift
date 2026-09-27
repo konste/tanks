@@ -14,6 +14,14 @@ import SwiftUI
 final class MenuBarPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    /// Fires on Esc, the standard AppKit route for "cancel this window" when nothing more specific
+    /// (a text field, a cancel button) claims the key first. Set by the panel's owner.
+    var onEscape: (() -> Void)?
+
+    override func cancelOperation(_ sender: Any?) {
+        onEscape?()
+    }
 }
 
 /// Owns the menu-bar status item and the panel that shows the dashboard.
