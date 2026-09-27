@@ -1,22 +1,27 @@
 import SwiftUI
 
-/// The fixed 780×430 panel: header, advice strip, three vendor columns, legend footer. Nothing
+/// Every point size in this file is written at the original 780×430 design and multiplied by
+/// this factor, so the panel scales as one unit. 4/3 is his 2026-09-26 ask ("1/3 larger in both
+/// directions").
+let S: CGFloat = 4.0 / 3.0
+
+/// The fixed 1040×573 panel (780×430 × S): header, advice strip, three vendor columns, legend footer. Nothing
 /// scrolls; the column content is sized to fit the tallest vendor (Claude: two accounts × up to
 /// four windows plus the paid line).
 struct TanksDashboardView: View {
-    static let size = CGSize(width: 780, height: 430)
+    static let size = CGSize(width: 780 * S, height: 430 * S)
 
     @Environment(TanksContainer.self) private var container
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = TanksPalette.forScheme(scheme)
-        VStack(spacing: 0) {
+        VStack(spacing: 0 * S) {
             header(p)
             Divider().overlay(p.line)
             AdviceStrip(palette: p)
             Divider().overlay(p.line)
-            HStack(spacing: 0) {
+            HStack(spacing: 0 * S) {
                 ForEach(Vendor.allCases, id: \.self) { vendor in
                     VendorColumn(vendor: vendor, palette: p)
                     if vendor != .cursor { Divider().overlay(p.line) }
@@ -26,7 +31,7 @@ struct TanksDashboardView: View {
             Divider().overlay(p.line)
             footer(p)
         }
-        .font(.system(size: 12))
+        .font(.system(size: 12 * S))
         .foregroundStyle(p.fg)
         .background(p.bg)
         .frame(width: Self.size.width, height: Self.size.height)
@@ -34,27 +39,27 @@ struct TanksDashboardView: View {
     }
 
     private func header(_ p: TanksPalette) -> some View {
-        HStack(spacing: 10) {
-            Text("Tanks").font(.system(size: 14, weight: .bold))
+        HStack(spacing: 10 * S) {
+            Text("Tanks").font(.system(size: 14 * S, weight: .bold))
             Spacer()
-            Text(container.headerMeta).font(.system(size: 11.5)).foregroundStyle(p.dim)
+            Text(container.headerMeta).font(.system(size: 11.5 * S)).foregroundStyle(p.dim)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 9)
-        .padding(.bottom, 7)
+        .padding(.horizontal, 14 * S)
+        .padding(.top, 9 * S)
+        .padding(.bottom, 7 * S)
     }
 
     private func footer(_ p: TanksPalette) -> some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 14 * S) {
             Button("Refresh") { container.store.refreshAll() }.buttonStyle(.plain).foregroundStyle(p.link)
             Button("Quit") { NSApplication.shared.terminate(nil) }.buttonStyle(.plain).foregroundStyle(p.link)
             Spacer()
             Text("solid = used · hatched = projected by reset · red tick = crosses 100% first · blue = idle or not signed in")
                 .foregroundStyle(p.dim)
         }
-        .font(.system(size: 11))
-        .padding(.horizontal, 14)
-        .padding(.vertical, 5)
+        .font(.system(size: 11 * S))
+        .padding(.horizontal, 14 * S)
+        .padding(.vertical, 5 * S)
     }
 }
 
@@ -67,21 +72,21 @@ private struct AdviceStrip: View {
     var body: some View {
         let advice = Array(container.store.visibleAdvice.prefix(2))
         let alert = advice.contains { $0.severity == .alert }
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 3 * S) {
             if advice.isEmpty {
-                HStack(spacing: 8) {
-                    Circle().fill(palette.green).frame(width: 8, height: 8)
+                HStack(spacing: 8 * S) {
+                    Circle().fill(palette.green).frame(width: 8 * S, height: 8 * S)
                     Text(container.store.lastTick == nil ? "First readings on their way…" : "All windows on course; no switch needed.")
                 }
-                .font(.system(size: 12.5))
+                .font(.system(size: 12.5 * S))
             }
             ForEach(advice) { item in
                 AdviceRow(advice: item, palette: palette)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, minHeight: 50 * S, alignment: .leading)
+        .padding(.horizontal, 14 * S)
+        .padding(.vertical, 6 * S)
         .background(alert ? palette.alertBg : palette.bg2)
     }
 }
@@ -92,12 +97,12 @@ private struct AdviceRow: View {
     var palette: TanksPalette
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle().fill(palette.severity(advice.severity)).frame(width: 8, height: 8)
-            HStack(spacing: 6) {
+        HStack(spacing: 8 * S) {
+            Circle().fill(palette.severity(advice.severity)).frame(width: 8 * S, height: 8 * S)
+            HStack(spacing: 6 * S) {
                 Text(advice.text).lineLimit(1).truncationMode(.tail)
                 if let detail = advice.detail {
-                    Text(detail).foregroundStyle(palette.dim).font(.system(size: 11))
+                    Text(detail).foregroundStyle(palette.dim).font(.system(size: 11 * S))
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,7 +115,7 @@ private struct AdviceRow: View {
             Button("Dismiss") { container.store.dismiss(advice) }
                 .buttonStyle(TanksButtonStyle(fill: .clear, stroke: palette.link, text: palette.link))
         }
-        .font(.system(size: 12.5))
+        .font(.system(size: 12.5 * S))
     }
 }
 
@@ -121,12 +126,12 @@ struct TanksButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 12, weight: .semibold))
+            .font(.system(size: 12 * S, weight: .semibold))
             .foregroundStyle(text)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 3)
-            .background(RoundedRectangle(cornerRadius: 6).fill(fill))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(stroke ?? .clear, lineWidth: 1))
+            .padding(.horizontal, 9 * S)
+            .padding(.vertical, 3 * S)
+            .background(RoundedRectangle(cornerRadius: 6 * S).fill(fill))
+            .overlay(RoundedRectangle(cornerRadius: 6 * S).stroke(stroke ?? .clear, lineWidth: 1 * S))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
@@ -140,21 +145,21 @@ private struct VendorColumn: View {
 
     var body: some View {
         let states = container.store.orderedStates(for: vendor)
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0 * S) {
             Text(vendor.title)
-                .font(.system(size: 12, weight: .bold))
-                .tracking(0.6)
+                .font(.system(size: 12 * S, weight: .bold))
+                .tracking(0.6 * S)
                 .foregroundStyle(palette.vendor(vendor))
-                .padding(.bottom, 4)
+                .padding(.bottom, 4 * S)
             ForEach(states, id: \.account.id) { state in
                 AccountBlock(state: state, palette: palette)
             }
-            Spacer(minLength: 4)
+            Spacer(minLength: 4 * S)
             paidLine(states)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
+        .padding(.horizontal, 12 * S)
+        .padding(.top, 8 * S)
+        .padding(.bottom, 6 * S)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
@@ -186,10 +191,10 @@ private struct VendorColumn: View {
                 }
             }
         }
-        .font(.system(size: 11))
-        .padding(.top, 5)
+        .font(.system(size: 11 * S))
+        .padding(.top, 5 * S)
         .overlay(alignment: .top) {
-            Rectangle().fill(palette.line).frame(height: 1)
+            Rectangle().fill(palette.line).frame(height: 1 * S)
         }
     }
 }
@@ -200,52 +205,52 @@ private struct AccountBlock: View {
     var palette: TanksPalette
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 0 * S) {
+            HStack(spacing: 6 * S) {
                 Text(state.account.label)
                     .foregroundStyle(state.isActive ? palette.fg : palette.dim)
                 if state.isActive {
                     Text("ACTIVE")
-                        .font(.system(size: 9.5, weight: .semibold))
-                        .tracking(0.4)
-                        .padding(.horizontal, 5).padding(.vertical, 1)
-                        .background(RoundedRectangle(cornerRadius: 4).fill(palette.pillBg))
+                        .font(.system(size: 9.5 * S, weight: .semibold))
+                        .tracking(0.4 * S)
+                        .padding(.horizontal, 5 * S).padding(.vertical, 1 * S)
+                        .background(RoundedRectangle(cornerRadius: 4 * S).fill(palette.pillBg))
                         .foregroundStyle(palette.pillFg)
                 }
                 if let plan = state.reading?.plan {
-                    Text(plan).font(.system(size: 10)).foregroundStyle(palette.dim2)
+                    Text(plan).font(.system(size: 10 * S)).foregroundStyle(palette.dim2)
                 }
                 Spacer()
                 if !state.isActive {
                     if state.account.id.vendor == .cursor {
-                        Text("manual").font(.system(size: 10.5)).foregroundStyle(palette.dim2)
+                        Text("manual").font(.system(size: 10.5 * S)).foregroundStyle(palette.dim2)
                     } else {
                         Button("switch") { container.performSwitch(to: state.account.id) }
                             .buttonStyle(.plain)
-                            .font(.system(size: 10.5))
+                            .font(.system(size: 10.5 * S))
                             .foregroundStyle(palette.link)
                     }
                 }
             }
-            .font(.system(size: 11.5))
-            .padding(.top, 6)
-            .padding(.bottom, 2)
+            .font(.system(size: 11.5 * S))
+            .padding(.top, 6 * S)
+            .padding(.bottom, 2 * S)
 
             if let reading = state.reading, case .signedOut(let reason) = reading.status {
-                Text(reason).font(.system(size: 10.5)).foregroundStyle(palette.blue).lineLimit(2)
-                    .padding(.vertical, 4)
+                Text(reason).font(.system(size: 10.5 * S)).foregroundStyle(palette.blue).lineLimit(2)
+                    .padding(.vertical, 4 * S)
             } else if state.projections.isEmpty {
-                Text(state.lastError ?? "waiting for first reading…").font(.system(size: 10.5)).foregroundStyle(palette.dim2)
-                    .padding(.vertical, 4)
+                Text(state.lastError ?? "waiting for first reading…").font(.system(size: 10.5 * S)).foregroundStyle(palette.dim2)
+                    .padding(.vertical, 4 * S)
             }
             ForEach(state.projections.filter { !$0.tank.isPaid }, id: \.tank.key) { projection in
                 TankRow(projection: projection, stale: !(state.reading?.isLive ?? false), palette: palette)
             }
             if let reading = state.reading, !reading.byModel.isEmpty {
                 Text(reading.byModel.prefix(4).map { "\($0.model) \(Fmt.dollars($0.dollars))" }.joined(separator: " · "))
-                    .font(.system(size: 10.5)).foregroundStyle(palette.dim)
+                    .font(.system(size: 10.5 * S)).foregroundStyle(palette.dim)
                     .lineLimit(1).minimumScaleFactor(0.85)
-                    .padding(.leading, 48)
+                    .padding(.leading, 48 * S)
             }
         }
     }
@@ -260,22 +265,22 @@ private struct TankRow: View {
 
     var body: some View {
         let tank = projection.tank
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Text(tank.label).font(.system(size: 11)).foregroundStyle(palette.dim).frame(width: 40, alignment: .leading).lineLimit(1)
-                TankBar(projection: projection, stale: stale, palette: palette).frame(height: 11)
-                Text(value).font(.system(size: tank.format == .percent ? 11.5 : 10.5, weight: .semibold)).frame(width: 40, alignment: .trailing).lineLimit(1)
+        VStack(spacing: 0 * S) {
+            HStack(spacing: 8 * S) {
+                Text(tank.label).font(.system(size: 11 * S)).foregroundStyle(palette.dim).frame(width: 40 * S, alignment: .leading).lineLimit(1)
+                TankBar(projection: projection, stale: stale, palette: palette).frame(height: 11 * S)
+                Text(value).font(.system(size: (tank.format == .percent ? 11.5 : 10.5) * S, weight: .semibold)).frame(width: 40 * S, alignment: .trailing).lineLimit(1)
             }
             HStack {
                 Text(leftNote).foregroundStyle(leftColor)
                 Spacer()
                 Text(rightNote)
             }
-            .font(.system(size: 10.5)).foregroundStyle(palette.dim)
-            .padding(.leading, 48)
+            .font(.system(size: 10.5 * S)).foregroundStyle(palette.dim)
+            .padding(.leading, 48 * S)
             .lineLimit(1)
         }
-        .padding(.vertical, 1.5)
+        .padding(.vertical, 1.5 * S)
     }
 
     private var value: String {
@@ -323,20 +328,20 @@ private struct TankBar: View {
             let used = w * projection.fill
             let projected = w * (projection.projectedFill ?? projection.fill)
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 3).fill(palette.track)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: 3 * S).fill(palette.track)
+                RoundedRectangle(cornerRadius: 3 * S)
                     .fill(stale ? palette.dim2 : palette.tier(projection.tier))
-                    .frame(width: max(used, projection.fill > 0 ? 3 : 0))
-                if projected > used + 1 {
+                    .frame(width: max(used, projection.fill > 0 ? 3 * S : 0))
+                if projected > used + S {
                     Hatch(color: palette.hatch)
                         .frame(width: projected - used)
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .clipShape(RoundedRectangle(cornerRadius: 3 * S))
                         .offset(x: used)
                 }
                 if projection.crossesAt != nil {
-                    RoundedRectangle(cornerRadius: 2).fill(palette.red)
-                        .frame(width: 3, height: geo.size.height + 4)
-                        .offset(x: w - 1, y: -2)
+                    RoundedRectangle(cornerRadius: 2 * S).fill(palette.red)
+                        .frame(width: 3 * S, height: geo.size.height + 4 * S)
+                        .offset(x: w - S, y: -2 * S)
                 }
             }
         }
@@ -354,8 +359,8 @@ private struct Hatch: View {
                 var path = Path()
                 path.move(to: CGPoint(x: x, y: size.height))
                 path.addLine(to: CGPoint(x: x + size.height, y: 0))
-                context.stroke(path, with: .color(color), lineWidth: 2.5)
-                x += 6
+                context.stroke(path, with: .color(color), lineWidth: 2.5 * S)
+                x += 6 * S
             }
         }
     }

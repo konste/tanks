@@ -2,8 +2,13 @@ import AppKit
 import SwiftUI
 
 /// The compact menu-bar item (design variant B): a tank glyph filled to the binding window's level
-/// plus that window's percentage. State C (an alert advice is pending) turns the glyph red with a
-/// mark; the image is then rendered in colour instead of as a monochrome template.
+/// plus that window's percentage. State C (an alert advice is pending) adds a solid badge with a
+/// knocked-out mark and sets the text bold.
+///
+/// The image is always a template, so macOS tints it with the menu bar's own foreground (white on
+/// a dark or wallpaper-tinted bar, black on a light one). An earlier version painted the attention
+/// state system red in colour; on his dark-blue menu bar that was barely legible (2026-09-26), and
+/// no fixed colour reads on every wallpaper, so attention is carried by shape instead.
 @MainActor
 enum TanksMenuBarRenderer {
     struct Content: Equatable {
@@ -25,7 +30,7 @@ enum TanksMenuBarRenderer {
         } else {
             image = MenuBarStripRenderer.fallbackIcon
         }
-        image.isTemplate = !content.attention
+        image.isTemplate = true
         image.accessibilityDescription = content.fill.map { "Tanks \(Int($0 * 100))%" } ?? "Tanks"
         last = (content, image)
         return image
@@ -35,7 +40,7 @@ enum TanksMenuBarRenderer {
         var content: Content
 
         var body: some View {
-            let color: Color = content.attention ? Color(hex: 0xFF453A) : .black
+            let color: Color = .black
             HStack(spacing: 4) {
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 3).stroke(color, lineWidth: 1.5).frame(width: 18, height: 10)
@@ -53,7 +58,13 @@ enum TanksMenuBarRenderer {
                         .foregroundStyle(color)
                 }
                 if content.attention {
-                    Text("!").font(.system(size: 12, weight: .heavy)).foregroundStyle(color)
+                    // A solid badge with the mark cut out of it: in a template image the cut-out
+                    // shows the bar's background, so the badge reads inverted on any wallpaper.
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 10, height: 13)
+                        Text("!").font(.system(size: 11, weight: .heavy)).foregroundStyle(color).blendMode(.destinationOut)
+                    }
+                    .compositingGroup()
                 }
             }
             .padding(2)

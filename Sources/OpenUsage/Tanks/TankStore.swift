@@ -57,7 +57,10 @@ final class TankStore {
 
     var worstActiveProjection: TankProjection? {
         states.values.filter(\.isActive).flatMap(\.projections)
-            .filter { !$0.tank.isPaid && $0.tank.format == .percent }
+            // Percent and credit tanks both fill against a cap; only dollar tanks (uncapped spend)
+            // have no meaningful fill. Codex's month is a credit tank, and leaving it out let the
+            // glyph say 25% while the strip alerted on that month at 99% (2026-09-26).
+            .filter { !$0.tank.isPaid && $0.tank.format != .dollars }
             .max { ($0.projectedFill ?? $0.fill) < ($1.projectedFill ?? $1.fill) }
     }
 

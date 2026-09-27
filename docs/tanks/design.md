@@ -87,7 +87,7 @@ Recommendations expire when their condition clears; a dismissed one stays quiet 
 
 ## Alerts
 
-Menu-bar state C plus a macOS notification for rule 1 and rule 4 only. Email stays available as
+Menu-bar state C (a solid knock-out "!" badge next to the bold percentage; the image stays a template so macOS tints it to the bar — the earlier red-in-colour version was illegible on his dark-blue bar, 2026-09-26) plus a macOS notification for rule 1 and rule 4 only. The glyph's tank and percentage are the worst projected fill among the active accounts' capped tanks (percent and credit; dollar tanks are uncapped and excluded). Email stays available as
 an option, off by default. (This contradicts the 2026-09-19 "email only" policy — needs his call.)
 
 ## Risks
@@ -104,7 +104,7 @@ an option, off by default. (This contradicts the 2026-09-19 "email only" policy 
 ## Panel shape (revised 2026-09-26, his instruction: no scrolling, landscape, width > height)
 
 `mock2.html` (rendered: `panel-dark.png`, `panel-light.png`, `panel-alert.png`). A fixed
-780 × ~430 px popover, ratio ~1.8:1, nothing scrolls. Three vendor columns side by side, each
+1040 × 573 px popover (the 780 × 430 design scaled by 4/3 on 2026-09-26, his ask: "1/3 larger in both directions"; every size in `TanksDashboardView` is a design literal times `S`), ratio ~1.8:1, nothing scrolls. Three vendor columns side by side, each
 with the active account on top and the other account below it, one bar per window, the paid
 line pinned to the column's bottom. Advice strip across the top (at most two lines), legend in
 the footer. Everything that was vertical in the first mock is now horizontal, which is what took
