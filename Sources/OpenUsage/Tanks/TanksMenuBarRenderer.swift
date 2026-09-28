@@ -48,7 +48,6 @@ enum TanksMenuBarRenderer {
                     RoundedRectangle(cornerRadius: 1.5).fill(color)
                         .frame(width: max(2, 14 * (content.fill ?? 0)), height: 6)
                         .padding(.leading, 2)
-                    RoundedRectangle(cornerRadius: 1).fill(color).frame(width: 2, height: 5).offset(x: 19)
                 }
                 .frame(width: 22, height: 12)
                 .opacity(content.stale ? 0.5 : 1)
