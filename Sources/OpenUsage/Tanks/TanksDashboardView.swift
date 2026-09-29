@@ -250,7 +250,11 @@ private struct AccountBlock: View {
                 Spacer()
                 if !state.isActive {
                     if state.account.id.vendor == .cursor {
-                        Text("manual").font(.system(size: 10.5 * S)).foregroundStyle(palette.dim2)
+                        Button("set active") { container.setCursorActive(to: state.account.id) }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 10.5 * S))
+                            .foregroundStyle(palette.link)
+                            .help("Tanks can't detect which Cursor account is signed in — tell it after switching by hand.")
                     } else {
                         Button("switch") { container.performSwitch(to: state.account.id) }
                             .buttonStyle(.plain)

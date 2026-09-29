@@ -93,7 +93,7 @@ struct CursorTankSource: TankSource {
     var feed: CursorAdminFeed
     var now: @Sendable () -> Date = Date.init
 
-    func isActive() -> Bool { account.id.slot == config.cursorActiveSlot }
+    func isActive() -> Bool { account.id.slot == CursorActiveAccount.slot(fallback: config.cursorActiveSlot) }
 
     func fetch() async throws -> AccountReading {
         let members = try await feed.members(now: now())

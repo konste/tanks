@@ -105,8 +105,14 @@ Recommendations expire when their condition clears; a dismissed one stays quiet 
 - Codex: swap `~/.codex/auth.json` with the parked copy, verify with `codex login status`
   (binary at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex`). The ChatGPT desktop app shares that
   file; whether it needs a restart is the first thing to test.
-- Cursor: no supported swap. Recommended: a second Cursor instance with its own `--user-data-dir`
-  signed in as admin; Tanks then says which one to use. Column shows "manual" until then.
+- Cursor: no supported swap, and no way to detect which account is signed in either (the Admin
+  API doesn't say). Recommended: a second Cursor instance with its own `--user-data-dir` signed in
+  as admin. The inactive account's row carries a "set active" button instead of "switch"; clicking
+  it after switching Cursor by hand is what moves the ACTIVE badge (`CursorActiveAccount`, a
+  UserDefaults flag `TankStore.refreshActiveFlags` re-derives from immediately, no poll needed).
+  Until told otherwise it defaults to `TanksConfig.cursorActiveSlot` (primary) — his 2026-09-28
+  report: after manually switching Cursor to admin, the badge stayed on konstantin because nothing
+  had ever told it otherwise.
 
 ## Alerts
 

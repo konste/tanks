@@ -80,6 +80,13 @@ final class TanksContainer {
         onRequestClose?()
     }
 
+    /// Tanks can't detect which Cursor account is signed in (the Admin API doesn't say); this
+    /// records his own report of it after he switches Cursor by hand.
+    func setCursorActive(to id: TankAccountID) {
+        CursorActiveAccount.setSlot(id.slot)
+        store.refreshActiveFlags()
+    }
+
     func performSwitch(to id: TankAccountID) {
         let actions = actions
         show("switching to \(config.account(id).label)…", for: 120)

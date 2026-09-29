@@ -44,6 +44,12 @@ final class TankStore {
         }
     }
 
+    /// Re-derives every account's `isActive` from its source without a network fetch — for
+    /// Cursor's "set active" control, where the fact changed but no reading did.
+    func refreshActiveFlags() {
+        for source in sources { states[source.account.id]?.isActive = Self.isActive(source) }
+    }
+
     /// Dev harness: feeds synthetic readings through the normal apply path (snapshot fixtures).
     func applyFixture(_ readings: [AccountReading], activeIDs: Set<TankAccountID>) {
         for id in states.keys { states[id]?.isActive = activeIDs.contains(id) }
