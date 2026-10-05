@@ -34,21 +34,19 @@ struct ClaudeTankSource: TankSource {
 
     func fetch() async throws -> AccountReading {
         let service = keychainService
-        var credentials = try loadCredentials(service: service)
+        let credentials = try loadCredentials(service: service)
         guard var oauth = credentials.claudeAiOauth, let token = oauth.accessToken, !token.isEmpty else {
             throw TankSourceError.notSignedIn("empty token in \(service.hasSuffix("credentials") ? "live" : "parked") item")
         }
         if needsRefresh(oauth) {
             oauth = try await refresh(oauth)
-            credentials.claudeAiOauth = oauth
-            try save(credentials, service: service)
+            try save(credentials, oauth: oauth, service: service)
         }
 
         var response = try await client.fetchUsage(accessToken: oauth.accessToken ?? "", config: Self.prodConfig)
         if response.statusCode == 401 {
             oauth = try await refresh(oauth)
-            credentials.claudeAiOauth = oauth
-            try save(credentials, service: service)
+            try save(credentials, oauth: oauth, service: service)
             response = try await client.fetchUsage(accessToken: oauth.accessToken ?? "", config: Self.prodConfig)
         }
         if response.statusCode == 429 {
@@ -117,16 +115,14 @@ struct ClaudeTankSource: TankSource {
         guard let text = try keychain.readGenericPassword(service: service, account: NSUserName()),
               let data = text.data(using: .utf8)
         else { throw TankSourceError.notSignedIn("keychain item \(service) missing") }
-        do {
-            return try JSONDecoder().decode(ClaudeCredentialsFile.self, from: data)
-        } catch {
+        guard let credentials = ClaudeCredentialsFile(data: data) else {
             throw TankSourceError.notSignedIn("keychain item unreadable")
         }
+        return credentials
     }
 
-    private func save(_ credentials: ClaudeCredentialsFile, service: String) throws {
-        let data = try JSONEncoder().encode(credentials)
-        guard let text = String(data: data, encoding: .utf8) else { return }
+    private func save(_ credentials: ClaudeCredentialsFile, oauth: ClaudeOAuth, service: String) throws {
+        let text = try credentials.mergingRotatedOAuth(oauth)
         try keychain.writeGenericPasswordForCurrentUser(service: service, value: text)
         AppLog.info(.auth, "claude \(account.id): rotated token written back (\(service.hasSuffix("credentials") ? "live" : "parked"))")
     }
