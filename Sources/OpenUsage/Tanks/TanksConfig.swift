@@ -22,7 +22,7 @@ struct TanksConfig: Sendable, Codable {
     var claudeActiveMarkerPath = "~/Library/Application Support/Claude-active-account"
     /// `konstantin` / `admin` as the marker file spells them.
     var claudeMarkerNames = [AccountSlot.primary.rawValue: "konstantin", AccountSlot.secondary.rawValue: "admin"]
-    var claudeSwitchTool = "~/.chief-data/bin/acc"
+    var claudeSwitchTool = "~/.chief-data/code/bin/acc"
 
     var codexLiveAuthPath = "~/.codex/auth.json"
     /// Tanks' own copies of `auth.json`, one per account; the one whose email is not in the live
@@ -55,7 +55,7 @@ struct TanksConfig: Sendable, Codable {
         return vendor == .claude ? claudePollInterval : pollInterval
     }
 
-    /// Optional mirror of `~/.chief-data/bin/allowance_probe.py`'s output file. Off until the probe's
+    /// Optional mirror of `~/.chief-data/code/bin/allowance_probe.py`'s output file. Off until the probe's
     /// launchd job is retired, so two writers never race on the file.
     var allowanceStatePath: String?
     var tanksStatePath = "~/.chief-data/tanks-state.json"

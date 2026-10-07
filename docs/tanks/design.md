@@ -26,8 +26,8 @@ scanning and the spend tiles (history is not wanted), round charts, PostHog, Spa
 the compact strip, the six-account grid, 60-second polling, the projection line to reset, the
 advisor, and the switch actions.
 
-What it replaces: the OpenUsage install; `~/.chief-data/bin/allowance_probe.py` and its launchd
-job (Tanks writes the same `~/.chief-data/allowance-state.json` schema so `allowance_watch.py`
+What it replaces: the OpenUsage install; `~/.chief-data/code/bin/allowance_probe.py` and its launchd
+job (Tanks writes the same `~/.chief-data/run/allowance-state.json` schema so `allowance_watch.py`
 and `render_allowance_page.py` keep working); opening chatgpt.com and cursor.com/dashboard by hand.
 
 ## Data — per vendor, per account (verified on this Mac 2026-09-26)
