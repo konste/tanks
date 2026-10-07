@@ -1,8 +1,8 @@
 import Foundation
 
 /// Writes the current state to disk after every tick so shell tools can read it:
-/// `~/.chief-data/tanks-state.json` (all six accounts, kept at the ~/.chief-data root since Tanks
-/// atomic-renames it and a symlink there wouldn't survive that) and, when configured, the schema
+/// `~/.chief-data/run/tanks-state.json` (all six accounts; a plain file, so the atomic rename is
+/// safe) and, when configured, the schema
 /// `allowance_probe.py` produces at `~/.chief-data/run/allowance-state.json` for the active Claude
 /// account, so `allowance_watch.py` / `render_allowance_page.py` keep working unchanged.
 struct TanksStateWriter: Sendable {

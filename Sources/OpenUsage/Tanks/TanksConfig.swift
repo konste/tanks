@@ -58,7 +58,7 @@ struct TanksConfig: Sendable, Codable {
     /// Optional mirror of `~/.chief-data/code/bin/allowance_probe.py`'s output file. Off until the probe's
     /// launchd job is retired, so two writers never race on the file.
     var allowanceStatePath: String?
-    var tanksStatePath = "~/.chief-data/tanks-state.json"
+    var tanksStatePath = "~/.chief-data/run/tanks-state.json"
 
     static let defaults = TanksConfig(
         claude: AccountConfig(primary: "konstantin@trase.ai", secondary: "admin-konstantin@trase.ai"),
