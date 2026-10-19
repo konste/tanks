@@ -24,6 +24,18 @@ struct TanksConfig: Sendable, Codable {
     var claudeMarkerNames = [AccountSlot.primary.rawValue: "konstantin", AccountSlot.secondary.rawValue: "admin"]
     var claudeSwitchTool = "~/.chief-data/code/bin/acc"
 
+    /// Each seat's monthly extra-usage cap in cents, read off the Trase org's member list
+    /// (2026-10-09) — the one signal every usage response already carries that tells the two
+    /// konstantin@trase.ai seats apart. `claude_account_switch`'s "already on X" check only reads
+    /// the marker file, never the token itself: found 2026-10-09 that admin's $2,500 token sat in
+    /// the live keychain item under a "konstantin" marker for days, valid and non-empty, so every
+    /// surface (including this one) reported konstantin as fine while showing admin's near-zero
+    /// usage. A mismatch here means the live item needs `claude` + `/login`, not a config change.
+    var claudeExpectedCapCents: [String: Int] = [
+        AccountSlot.primary.rawValue: 300_000,
+        AccountSlot.secondary.rawValue: 250_000,
+    ]
+
     var codexLiveAuthPath = "~/.codex/auth.json"
     /// Tanks' own copies of `auth.json`, one per account; the one whose email is not in the live
     /// file is the parked account. Created by `codex login` under `CODEX_HOME=<dir>`.

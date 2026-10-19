@@ -54,6 +54,7 @@ struct ClaudeTankSource: TankSource {
         }
         guard (200..<300).contains(response.statusCode) else { throw TankSourceError.http(response.statusCode) }
         guard let body = ProviderParse.jsonObject(response.body) else { throw TankSourceError.invalidBody("not JSON") }
+        try Self.checkIdentity(body, account: account, config: config)
         return AccountReading(
             account: account,
             plan: ClaudeUsageMapper.formatPlan(subscriptionType: oauth.subscriptionType, rateLimitTier: oauth.rateLimitTier),
@@ -66,6 +67,23 @@ struct ClaudeTankSource: TankSource {
 
     static let sessionSeconds: TimeInterval = 5 * 3600
     static let weekSeconds: TimeInterval = 7 * 86400
+
+    /// A valid, non-expired token in the live keychain item can still belong to the wrong seat —
+    /// `claude_account_switch`'s idempotency check only reads the marker file (found 2026-10-09:
+    /// admin's token sat live under a "konstantin" marker for days, every number plausible, none
+    /// of them konstantin's). The monthly extra-usage cap is already in every response this source
+    /// fetches, and it differs per seat, so this catches the mismatch for free.
+    static func checkIdentity(_ body: [String: Any], account: TankAccount, config: TanksConfig) throws {
+        guard let expected = config.claudeExpectedCapCents[account.id.slot.rawValue],
+              let extra = body["extra_usage"] as? [String: Any],
+              let limitCents = ProviderParse.number(extra["monthly_limit"])
+        else { return }
+        guard Int(limitCents) == expected else {
+            throw TankSourceError.notSignedIn(
+                "live keychain item is the wrong seat (cap $\(Int(limitCents) / 100), expected $\(expected / 100) for \(account.email)) — run claude then /login"
+            )
+        }
+    }
 
     static func tanks(from body: [String: Any]) -> [Tank] {
         var tanks: [Tank] = []
