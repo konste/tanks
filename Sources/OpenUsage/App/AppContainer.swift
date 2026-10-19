@@ -35,19 +35,17 @@ final class AppContainer {
     /// One-time onboarding state (the first-run Customize hint card). Only ever marked pending by
     /// `FirstRunSeeder` on a fresh install, so existing installs never see the card.
     let onboarding: OnboardingStore
-    /// Claims Codex rate-limit reset credits from the resets popover (the app's only provider-API
-    /// write). Each service shares its card's auth store and usage client. The view tree selects
-    /// the matching service from `\.codexResetClaims` for each card's resets popover.
-    let codexResetClaims: [String: CodexResetClaimService]
-    /// The provider runtimes, kept so on-demand credential detection (the Customize "Reset All" reseed)
-    /// can re-probe `hasLocalCredentials()` the same way first-run seeding does.
-    private let providers: [ProviderRuntime]
+    /// Claims Codex reset credits and Claude reset grants from the resets popover (the app's only
+    /// provider-API writes), keyed by provider id. Each service shares its card's credentials. The view
+    /// tree selects the matching service from `\.resetClaims` for each card's resets popover.
+    let resetClaims: [String: any ResetClaimService]
+    /// The provider runtimes, kept so on-demand credential detection (the welcome screen and the
+    /// Customize "Reset All" reseed) can re-probe `hasLocalCredentials()` on every card.
+    let providers: [ProviderRuntime]
     /// Read-only usage API on 127.0.0.1:6736 for other local apps (silently off when the port is taken).
     private let localAPI: LocalUsageServer
-    // A `let` of a `Sendable` `Task` is implicitly nonisolated, so the nonisolated `deinit` can cancel it.
-    private let refreshTask: Task<Void, Never>
-    /// The fresh-install credential-detection pass (see `FirstRunSeeder`); `nil` on every later launch.
-    private let seedTask: Task<Void, Never>?
+    /// `nil` until `startRefreshing()`, which the welcome screen delays until the user has picked providers.
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
     /// The new-provider credential-detection pass (see `NewProviderSeeder`); `nil` unless this launch is
     /// the first with a provider the install has never seen.
     private let newProviderTask: Task<Void, Never>?
@@ -104,10 +102,10 @@ final class AppContainer {
             dataStore?.providerEnablementDidChange()
             iCloudSync?.scheduleWrite()
         }
-        // Fresh installs start minimal: seed the enabled-provider list (Claude/Codex/Cursor right away,
-        // then the detected set once the local credential probe finishes). No-op on every later launch.
+        // Fresh installs start with nothing on; the welcome screen turns on the user's picks. No-op on
+        // every later launch.
         let onboarding = OnboardingStore()
-        self.seedTask = FirstRunSeeder.seedIfNeeded(
+        FirstRunSeeder.seedIfNeeded(
             isFreshInstall: isFreshInstall,
             providers: providers,
             enablement: enablement,
@@ -130,47 +128,27 @@ final class AppContainer {
         self.dataStore = dataStore
         self.iCloudSync = iCloudSync
 
-        // The resets popover's claim service, sharing the Codex provider's credential loading and HTTP
-        // client so the claim's auth can't drift from the provider's. A successful claim forces a Codex
-        // refresh so the meters and credit count reconcile before the popover shows its result. The
-        // forced refresh returns `.skipped` when another refresh already owns the provider — and that
-        // in-flight probe may carry *pre-claim* usage — so retry until this refresh actually runs
-        // (bounded; the racing probe finishes in seconds).
-        self.codexResetClaims = Dictionary(uniqueKeysWithValues: providers.compactMap { $0 as? CodexProvider }.map { codex in
-            (codex.provider.id, CodexResetClaimService(
+        // The resets popover's claim services, sharing each provider's credential loading and HTTP
+        // client so the claim's auth can't drift from the provider's. A claim forces a refresh so the
+        // meters and reset count reconcile before the popover shows its result.
+        var resetClaims: [String: any ResetClaimService] = [:]
+        for codex in providers.compactMap({ $0 as? CodexProvider }) {
+            let id = codex.provider.id
+            resetClaims[id] = CodexResetClaimService(
                 authStore: codex.authStore,
                 usageClient: codex.usageClient,
                 refreshAfterClaim: { [weak dataStore] in
-                    // The bound must outlast the provider's slowest refresh: usage fetch (10s timeout)
-                    // + token refresh (15s) + usage retry (10s) + reset-credit fetch (10s) ≈ 45s. The
-                    // common race (the periodic timer's probe) clears in a couple of seconds; the
-                    // pathological one keeps the popover's honest "Resetting…" up rather than showing
-                    // a success banner over pre-claim meters. A `.failed` probe is retried a few times
-                    // too — a transient flake right after the claim must not strand pre-claim meters
-                    // behind a success banner — before giving up loudly (the provider error already
-                    // shows on the card, so the staleness isn't silent).
-                    var failures = 0
-                    for attempt in 0..<45 {
-                        guard let dataStore else { return }
-                        switch await dataStore.refresh(providerID: codex.provider.id, force: true) {
-                        case .refreshed, .cacheHit, .backedOff:
-                            return
-                        case .failed:
-                            failures += 1
-                            guard failures < 3 else {
-                                AppLog.error(LogTag.plugin("codex"), "post-claim refresh failed \(failures) times; meters may lag until the next cycle")
-                                return
-                            }
-                            try? await Task.sleep(for: .seconds(2))
-                        case .skipped:
-                            AppLog.info(LogTag.plugin("codex"), "post-claim refresh waiting out an in-flight refresh (attempt \(attempt + 1))")
-                            try? await Task.sleep(for: .seconds(1))
-                        }
-                    }
-                    AppLog.error(LogTag.plugin("codex"), "post-claim refresh kept being skipped; meters may lag until the next cycle")
+                    await ResetClaimRefresh.run(dataStore: dataStore, providerID: id, tag: "codex")
                 }
-            ))
-        })
+            )
+        }
+        for claude in providers.compactMap({ $0 as? ClaudeProvider }) {
+            let id = claude.provider.id
+            resetClaims[id] = ClaudeResetClaimService(provider: claude, refreshAfterClaim: { [weak dataStore] in
+                await ResetClaimRefresh.run(dataStore: dataStore, providerID: id, tag: "claude")
+            })
+        }
+        self.resetClaims = resetClaims
 
         // Anonymous usage telemetry (mandatory daily activity and crashes, optional provider rollups).
         // Its state lives in a dedicated UserDefaults suite, kept separate from app settings so the user's
@@ -213,7 +191,6 @@ final class AppContainer {
                 errors: dataStore.providerErrors
             )
         })
-        self.refreshTask = Self.startPeriodicRefresh(dataStore: dataStore, telemetry: telemetry)
         localAPI.start()
         // Become the notification-center delegate so banners show while frontmost — a menu-bar accessory
         // effectively always is. Notification authorization is requested the first time a trigger is
@@ -222,10 +199,14 @@ final class AppContainer {
     }
 
     deinit {
-        refreshTask.cancel()
-        seedTask?.cancel()
+        refreshTask?.cancel()
         newProviderTask?.cancel()
         shellEnvironmentSnapshotTask.cancel()
+    }
+
+    func startRefreshing() {
+        guard refreshTask == nil else { return }
+        refreshTask = Self.startPeriodicRefresh(dataStore: dataStore, telemetry: telemetry)
     }
 
     /// Re-runs first-launch credential detection on demand — the enablement half of the Customize
@@ -278,8 +259,8 @@ final class AppContainer {
     /// Between passes the loop sleeps via `RefreshWakeSignal`, which wakes it early when the user
     /// enables/disables a provider so a newly-enabled provider is fetched promptly instead of waiting out
     /// the full interval. The signal subscribes BEFORE the first pass and buffers, so an enablement change
-    /// landing while a pass is still running (first-run credential detection, `NewProviderSeeder`, the
-    /// Customize "Reset All" reseed — all of which typically finish faster than the network fetches) is
+    /// landing while a pass is still running (`NewProviderSeeder`, the Customize "Reset All" reseed —
+    /// both of which typically finish faster than the network fetches) is
     /// never lost. Each pass still honors the cache (and the per-provider failure backoff), so an early
     /// wake only hits the network for a provider whose snapshot has actually expired.
     ///

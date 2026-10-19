@@ -31,6 +31,18 @@ which Command Line Tools do not ship; `swift test` runs only with Xcode installe
 OpenUsage's original README, provider docs and architecture notes are under [docs/](docs/); they
 describe the inherited code and remain accurate for the provider layer.
 
+- **[Antigravity](docs/providers/antigravity.md)** — shared Gemini and Claude pool quotas, 5-hour and weekly windows
+- **[Claude](docs/providers/claude.md)** — session, weekly, model-specific limits, extra usage, local daily spend
+- **[Codex](docs/providers/codex.md)** — session, weekly, credits, local daily spend
+- **[Copilot](docs/providers/copilot.md)** — AI credits, extra usage, organization billing, chat and completions
+- **[Cursor](docs/providers/cursor.md)** — credits, total usage, Grok Bot, Cursor Models, Other Models, requests, on-demand, per-day spend
+- **[Devin](docs/providers/devin.md)** — weekly and daily quota, extra usage balance
+- **[Grok](docs/providers/grok.md)** — weekly shared pool, pay-as-you-go, local daily spend
+- **[Ollama](docs/providers/ollama.md)** — Ollama Cloud monthly credits (or session and weekly limits on legacy plans), purchased credits
+- **[OpenCode](docs/providers/opencode.md)** — Go session/weekly/monthly caps, Zen spend, local daily spend
+- **[OpenRouter](docs/providers/openrouter.md)** — credit balance, daily/weekly/monthly spend (API key)
+- **[Z.ai](docs/providers/zai.md)** — session, weekly, web-search quotas (GLM Coding Plan, API key)
+
 ## Upstream watch
 
 `.github/workflows/upstream_watch.yml` runs twice a week on GitHub and opens an assigned issue when robinebers/openusage publishes a stable release newer than `.upstream-release`. After rebasing the fork, set that file to the new tag; the issue closes itself on the next run.

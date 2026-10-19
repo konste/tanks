@@ -2,7 +2,7 @@
 
 ## When data updates
 
-- All enabled providers refresh together: once at launch, then every 5 minutes (a fixed cadence — there's no setting for it). Opening the popover does not start a second automatic pass. Providers fetch in parallel, so fast cards update without waiting for a slow one. The batch itself still finishes only after every provider returns; notifications, history sync, and the next five-minute wait begin after that point.
+- All enabled providers refresh together: once at launch, then every 5 minutes (a fixed cadence — there's no setting for it). Opening the popover does not start a second automatic pass. Providers fetch in parallel, so fast cards update without waiting for a slow one; close-together results are briefly grouped so a burst shows as one update and is saved once (adapted from Runway (mstallone/runway) #47, MIT). The batch itself still finishes only after every provider returns; notifications, history sync, and the next five-minute wait begin after that point.
 - Turning a provider on (yourself in Customize, or automatically by first-launch/new-provider detection) fetches it promptly instead of waiting out the interval — even when the change lands in the middle of a refresh that's already running.
 - The Dashboard and Settings footer shows `Next update in Nm`. **Clicking it (or pressing ⌘R while that footer is present)** refreshes immediately, skipping the cache.
 - The one-shot `openusage` command reuses this same persisted cache for five minutes, refreshes missing or stale entries without starting the app, and exits. `openusage --force` runs the same forced provider refresh as ⌘R regardless of cache age.
@@ -26,9 +26,15 @@ Claude, Codex, and pi spend history has a separate local-log parse cache under
 `~/Library/Application Support/OpenUsage/log-scan-cache/`. It stores parsed usage events before OpenUsage
 applies model-rate estimates, so pricing updates take effect without re-reading unchanged JSONL. On
 relaunch, an entry is reused only when its path, size, modification time, and parser version still match.
-Same-home cards share parsed data, and changing one source file rewrites only that file's record. Old files
-leave the cache as the history window advances, and identities unused for 35 days are removed. App writes
-are debounced until after refresh; the one-shot CLI drains pending writes before it exits.
+When a supported JSONL file only grows, the scanner resumes from the last complete line and reads only
+the appended bytes. A changed prefix, truncated file, incomplete appended line, or unusable parser state
+falls back to a full streamed parse instead of dropping that record. Same-home cards share parsed data,
+and changing one source file rewrites only that file's record. Old files leave the cache as the history
+window advances, and identities unused for 35 days are removed. App writes are debounced until after
+refresh; the one-shot CLI drains pending writes before it exits.
+
+The append-only scanner is adapted from Runway (mstallone/runway, MIT). The Codex line scan checks
+event markers in one pass, also adapted from Runway #45.
 
 ## When a fetch fails
 
@@ -45,6 +51,14 @@ limit refresh whose local log scan is temporarily unavailable—does not remove 
 contribution from an iCloud-combined spend total.
 
 Rows that have never had data show "No data" rather than made-up numbers.
+
+## Keychain access
+
+Some logins live in your macOS Keychain, and macOS asks before OpenUsage can read them.
+
+- Choose **Always Allow** so later refreshes stay quiet.
+- Each login shows one request at a time, and OpenUsage waits for your answer.
+- If you choose **Deny**, OpenUsage stops asking for that login until you refresh manually.
 
 ## Stale data
 

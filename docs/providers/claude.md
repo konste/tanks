@@ -31,10 +31,24 @@ The Rate Limit Resets row counts the resets you have left, with a colored dot fo
 (blue beyond a week, yellow within a week, red within 48 hours), and hovering the value opens the same
 timeline popover Codex uses. A reset whose grant has no deadline still counts, but has no date to show.
 Accounts outside the program read `0 available`; if Anthropic doesn't report the program at all for
-your plan, the row shows **No data**.
+your plan, or reports a reset OpenUsage can't read, the row shows **No data**.
 
-For now OpenUsage only shows your resets. To use one, run `/rate-limit-options` in Claude Code, or
-use it when Claude Code offers it at a usage limit.
+To use a reset, hover a node in the popover and click **Use**, then confirm. Anthropic decides which
+reset is spent (the next one it offers), and the confirm card says which limits it refills. The claim
+only ever uses the login the resets were read with, never another Claude login on the Mac. If that
+login is gone, nothing is sent. Afterwards OpenUsage refreshes Claude right away, even during an
+"Updates blocked by Anthropic" wait, so the meters and the count show the result. The popover reports
+one of these:
+
+- **Reset claimed** — your limits were refilled.
+- **Your usage doesn't need a reset yet** — Anthropic refused because you aren't limited; nothing was spent.
+- **That reset is no longer available** — it was used elsewhere, expired, or isn't the next one; nothing was spent.
+- **Your reset may still be going through** — Anthropic took the request but couldn't confirm it yet. Check again in a minute.
+- **Resets can't be used right now** — a cooldown, a paused reset, or lower-priority mode is active.
+- **Couldn't reset usage** — a network or sign-in problem, or an answer OpenUsage doesn't recognize. Trying again is safe: if Anthropic's answer never arrived, the retry reuses the first attempt's request id (even after reopening the popover), so it can't spend a second reset.
+
+**Use** only appears when Anthropic says your account is eligible and names a next reset. You can
+also use a reset with `/rate-limit-options` in Claude Code.
 
 ## Where credentials come from
 
@@ -57,10 +71,13 @@ Both older Desktop login caches and newer account-specific caches are supported.
 tokens must match the account currently signed in to Desktop and the card's organization. A newer
 cache entry or deletion marker takes precedence over an older copy of the same login.
 
-macOS asks once before OpenUsage can access that Keychain item. Background refreshes never open the
-password dialog: OpenUsage first asks you to refresh manually, and choosing **Always Allow** makes later
-refreshes silent. If Desktop's short-lived token expires, open Claude Desktop so it can renew the login,
-then refresh OpenUsage.
+macOS asks before OpenUsage can access that Keychain item. Choosing **Always Allow** makes later
+refreshes silent. If you choose **Deny**, OpenUsage stops asking until you refresh manually. If Desktop's
+short-lived token expires, open Claude Desktop so it can renew the login, then refresh OpenUsage.
+
+OpenUsage reads and saves Claude Code's Keychain login the same way Claude Code does, through macOS's
+`security` tool. That read doesn't ask for access, and Claude Code keeps working after OpenUsage saves a
+renewed login.
 
 A `CLAUDE_CODE_OAUTH_TOKEN` — usually a long-lived `claude setup-token` — can run the model but can't read your Session and Weekly limits, and it often lingers in your shell environment. So when a real keychain or file login is present, OpenUsage uses that login for the live meters and keeps the environment token only as a fallback; the Session/Weekly meters no longer go blank just because that token is set. If the environment token is your *only* credential (a headless setup), it's used on its own and the spend tiles still load from local logs.
 
@@ -137,9 +154,18 @@ Local spend does not require a Claude OAuth login. If Claude Code uses an API-ke
 
 ## Under the hood
 
-`GET https://api.anthropic.com/api/oauth/usage?cedar_ember=1` with the selected OAuth token. The
-`cedar_ember=1` flag asks for the reset grants (Anthropic's internal name for the program), the same
-way Claude Code does. Claude Code tokens refresh via `platform.claude.com/v1/oauth/token`; Claude Desktop tokens are read-only and must be renewed by Desktop itself. If a token is expired or revoked, OpenUsage retries with the next credential source before reporting an error.
+`GET https://api.anthropic.com/api/oauth/usage` with the selected OAuth token. The Rate Limit Resets
+row comes from a separate `GET https://api.anthropic.com/api/oauth/usage?cedar_ember=1&skip_spend=1`
+(`cedar_ember` is Anthropic's internal name for the reset grants), the same request Claude Code makes.
+Anthropic throttles that request when it's polled, so OpenUsage checks it at most once an hour per
+login and shows the last answer in between; a failed check keeps the previous value and tries again an
+hour later. Token refreshes keep that cached answer; switching accounts starts a separate check. If
+the login changes while a request is running, OpenUsage discards the old account's answer and reloads
+the current login before showing usage. Claude Code tokens refresh via `platform.claude.com/v1/oauth/token`; Claude Desktop tokens are read-only and must be renewed by Desktop itself. If a token is expired or revoked, OpenUsage retries with the next credential source before reporting an error.
+
+Using a reset sends `POST https://api.anthropic.com/api/organizations/{org}/reset_rate_limits` with the
+next grant's id and a request id, the same request Claude Code sends; see
+[the claim research](../research/claude-reset-grant-claim.md).
 
 The plan badge reads `GET https://api.anthropic.com/api/oauth/profile` (the organization's `rate_limit_tier`), because the plan Claude Code saves at sign-in never updates afterwards. To stay clear of Anthropic's rate limits, that lookup runs at most once per access token — after a usage fetch has succeeded — and cards bound to a specific account reuse the profile they already fetched to verify identity, so they make no extra request. Inference-only tokens skip it entirely.
 

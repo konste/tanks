@@ -141,6 +141,39 @@ final class CursorUsageSummaryMapperTests: XCTestCase {
         }
     }
 
+    func testAppendMissingOnDemandDoesNotReplaceExistingOnDemand() {
+        var lines: [MetricLine] = [
+            .progress(label: "On-demand", used: 1, limit: 10, format: .dollars)
+        ]
+        CursorUsageSummaryMapper.appendMissingOnDemand(
+            from: [
+                "individualUsage": [
+                    "onDemand": ["enabled": true, "used": 25_000, "limit": 100_000]
+                ]
+            ],
+            to: &lines
+        )
+        XCTAssertEqual(lines.filter { $0.label == "On-demand" }.count, 1)
+        XCTAssertEqual(progress(lines, "On-demand")?.used, 1)
+        XCTAssertEqual(progress(lines, "On-demand")?.limit, 10)
+    }
+
+    func testAppendMissingOnDemandAddsIndividualBucket() {
+        var lines: [MetricLine] = [
+            .progress(label: "Cursor Models", used: 75, limit: 100, format: .percent)
+        ]
+        CursorUsageSummaryMapper.appendMissingOnDemand(
+            from: [
+                "individualUsage": [
+                    "onDemand": ["enabled": true, "used": 0, "limit": 25_000, "remaining": 25_000]
+                ]
+            ],
+            to: &lines
+        )
+        XCTAssertEqual(progress(lines, "On-demand")?.used, 0)
+        XCTAssertEqual(progress(lines, "On-demand")?.limit, 250)
+    }
+
     private func progress(
         _ lines: [MetricLine],
         _ label: String
@@ -156,13 +189,88 @@ final class CursorUsageSummaryMapperTests: XCTestCase {
 
 @MainActor
 final class CursorEnterpriseProviderTests: XCTestCase {
+    func testPrimaryPoolPathUsesLocalEnterpriseMembershipAndUsageSummaryOnDemand() async throws {
+        let accessToken = makeCursorJWT(sub: "google-oauth2|enterprise-user")
+        let http = RoutingHTTPClient { request in
+            switch request.url {
+            case CursorUsageClient.usageURL:
+                return HTTPResponse(statusCode: 200, headers: [:], body: Data("""
+                {
+                  "enabled": true,
+                  "billingCycleStart": 1770000000000,
+                  "billingCycleEnd": 1772592000000,
+                  "planUsage": {
+                    "limit": 2000,
+                    "totalSpend": 1500,
+                    "autoPercentUsed": 75,
+                    "apiPercentUsed": 100,
+                    "totalPercentUsed": 76
+                  },
+                  "spendLimitUsage": { "limitType": "team", "pooledLimit": 0 }
+                }
+                """.utf8))
+            case CursorUsageClient.planURL:
+                return HTTPResponse(
+                    statusCode: 200,
+                    headers: [:],
+                    body: Data(#"{"planInfo":{"planName":"Pro"}}"#.utf8)
+                )
+            case CursorUsageClient.usageSummaryURL:
+                return HTTPResponse(statusCode: 200, headers: [:], body: Data("""
+                {
+                  "membershipType": "enterprise",
+                  "individualUsage": {
+                    "onDemand": { "enabled": true, "used": 12345, "limit": 200000, "remaining": 187655 }
+                  }
+                }
+                """.utf8))
+            case CursorUsageClient.creditsURL:
+                return HTTPResponse(statusCode: 200, headers: [:], body: Data(#"{}"#.utf8))
+            case CursorUsageClient.grokBotUsageURL:
+                return HTTPResponse(
+                    statusCode: 200,
+                    headers: [:],
+                    body: Data(#"{"usagePercent":0,"hasNonZeroIncludedLimit":true}"#.utf8)
+                )
+            default:
+                return HTTPResponse(statusCode: 404, headers: [:], body: Data())
+            }
+        }
+        let provider = CursorProvider(
+            authStore: CursorAuthStore(
+                sqlite: KeyValueSQLite(values: [
+                    CursorAuthStore.accessTokenKey: accessToken,
+                    CursorAuthStore.membershipTypeKey: "enterprise"
+                ]),
+                keychain: FakeKeychain()
+            ),
+            usageClient: CursorUsageClient(http: http),
+            now: { Date(timeIntervalSince1970: 1_800_000_000) },
+            pricing: { TestPricing.bundled },
+            usageHistoryStore: CursorUsageHistoryStore(directory: FileManager.default.temporaryDirectory
+                .appendingPathComponent("cursor-enterprise-primary-\(UUID().uuidString)", isDirectory: true))
+        )
+
+        let snapshot = await provider.refresh()
+
+        XCTAssertNil(snapshot.errorCategory)
+        XCTAssertEqual(snapshot.plan, "Enterprise")
+        XCTAssertEqual(progress(snapshot.lines, "Cursor Models")?.used, 75)
+        XCTAssertEqual(progress(snapshot.lines, "Other Models")?.used, 100)
+        let onDemand = try XCTUnwrap(progress(snapshot.lines, "On-demand"))
+        XCTAssertEqual(onDemand.used, 123.45, accuracy: 0.001)
+        XCTAssertEqual(onDemand.limit, 2_000)
+        XCTAssertTrue(http.requests.contains { $0.url == CursorUsageClient.usageSummaryURL })
+    }
+
     func testRefreshCombinesEnterpriseMetersAndStillAppendsUsageHistory() async throws {
         let now = try XCTUnwrap(OpenUsageISO8601.date(from: "2026-07-13T12:00:00.000Z"))
         let accessToken = makeCursorJWT(sub: "google-oauth2|enterprise-user")
-        let csv = """
-        Date,Model,Max Mode,Input (w/ Cache Write),Input (w/o Cache Write),Cache Read,Output Tokens,Cost
-        2026-07-13T10:00:00Z,composer-1,No,0,1000,0,100,Included
-        """
+        let historyDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cursor-enterprise-history-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: historyDirectory) }
+        let todayStart = Calendar.current.startOfDay(for: now)
+        let todayStartMilliseconds = String(Int(todayStart.timeIntervalSince1970 * 1000))
         let http = RoutingHTTPClient { request in
             if request.url == CursorUsageClient.usageURL {
                 return HTTPResponse(
@@ -214,8 +322,25 @@ final class CursorEnterpriseProviderTests: XCTestCase {
                 }
                 """.utf8))
             }
-            if request.url.absoluteString.hasPrefix(CursorUsageClient.exportCSVURL.absoluteString) {
-                return HTTPResponse(statusCode: 200, headers: [:], body: Data(csv.utf8))
+            if request.url == CursorUsageClient.usageEventsURL {
+                let payload = request.body
+                    .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+                let events: [[String: Any]] = payload?["startDate"] as? String == todayStartMilliseconds
+                    ? [[
+                        "timestamp": "1783936800000",
+                        "model": "composer-1",
+                        "tokenUsage": ["inputTokens": 1000, "outputTokens": 100]
+                    ]]
+                    : []
+                let response: [String: Any] = [
+                    "totalUsageEventsCount": events.count,
+                    "usageEventsDisplay": events
+                ]
+                return HTTPResponse(
+                    statusCode: 200,
+                    headers: [:],
+                    body: try JSONSerialization.data(withJSONObject: response)
+                )
             }
             return HTTPResponse(statusCode: 404, headers: [:], body: Data())
         }
@@ -226,7 +351,8 @@ final class CursorEnterpriseProviderTests: XCTestCase {
             ),
             usageClient: CursorUsageClient(http: http),
             now: { now },
-            pricing: { TestPricing.bundled }
+            pricing: { TestPricing.bundled },
+            usageHistoryStore: CursorUsageHistoryStore(directory: historyDirectory)
         )
 
         let snapshot = await provider.refresh()
@@ -252,7 +378,7 @@ final class CursorEnterpriseProviderTests: XCTestCase {
                 $0.name == "user" && $0.value == "enterprise-user"
             } == true
         })
-        XCTAssertTrue(http.requests.contains { $0.url.absoluteString.hasPrefix(CursorUsageClient.exportCSVURL.absoluteString) })
+        XCTAssertTrue(http.requests.contains { $0.url == CursorUsageClient.usageEventsURL })
 
         let descriptors = provider.widgetDescriptors
         let runtime = TestProviderRuntime(

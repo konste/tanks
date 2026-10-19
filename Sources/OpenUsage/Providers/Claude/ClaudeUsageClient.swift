@@ -91,41 +91,76 @@ struct ClaudeUsageClient: Sendable {
         )
     }
 
-    /// `GET /api/oauth/usage?cedar_ember=1`. The flag opts in to the `cedar_ember` block (Anthropic's
-    /// one-off usage-limit reset grants, the Rate Limit Resets row), which the endpoint returns as `null`
-    /// without it. Claude Code sends the same flag when it checks for a reset to offer. The User-Agent
-    /// matches Claude Code's own `claude-cli/<version> (external, cli)` format: Anthropic decides grant
-    /// eligibility by client surface, and anything it doesn't recognize as Claude Code comes back
-    /// `eligible: false, ineligible_reason: "surface"` with no grants.
-    ///
-    /// Tanks (2026-09-26): the endpoint also picks its rate-limit bucket by User-Agent. Measured on
+    /// Tanks (2026-09-26): the usage endpoint picks its rate-limit bucket by User-Agent. Measured on
     /// both accounts, calls 25 s apart: every `claude-code/<version>` string answered 200 every time,
     /// while `claude-cli/…`, `curl/…`, `Tanks/…`, `Claude-Code/…` and `claude-code` without a version
-    /// answered 429 `Retry-After: 0` on every call. So the agent below carries the `claude-code/`
-    /// prefix; the `(external, cli)` suffix is kept for the grant-surface check above.
+    /// answered 429 `Retry-After: 0` on every call. So every request below carries the `claude-code/`
+    /// prefix; the `(external, cli)` suffix is kept for the grant-surface check on the reset-grants read.
     static let userAgent = "claude-code/2.1.273 (external, cli)"
 
+    /// `GET /api/oauth/usage`, the plain read Claude Code makes for its own usage display.
     func fetchUsage(accessToken: String, config: ClaudeOAuthConfig) async throws -> HTTPResponse {
+        try await sendUsageRequest(url: config.usageURL, accessToken: accessToken)
+    }
+
+    /// `GET /api/oauth/usage?cedar_ember=1&skip_spend=1`, the exact request Claude Code makes when it checks
+    /// for a reset to offer. `cedar_ember=1` opts in to Anthropic's one-off usage-limit reset grants (the
+    /// Rate Limit Resets row), which the plain read returns as `null`; `skip_spend=1` drops the spend
+    /// figures this request doesn't need. Anthropic rate-limits this variant hard when it's polled, so the
+    /// provider asks at most once an hour. Anthropic also decides grant eligibility by client surface: a
+    /// User-Agent it doesn't recognize as Claude Code comes back `eligible: false,
+    /// ineligible_reason: "surface"` with no grants.
+    func fetchResetGrants(accessToken: String, config: ClaudeOAuthConfig) async throws -> HTTPResponse {
+        try await sendUsageRequest(url: Self.resetGrantsURL(config.usageURL), accessToken: accessToken)
+    }
+
+    static func resetGrantsURL(_ usageURL: URL) -> URL {
+        guard var components = URLComponents(url: usageURL, resolvingAgainstBaseURL: false) else { return usageURL }
+        components.queryItems = (components.queryItems ?? []) + [
+            URLQueryItem(name: "cedar_ember", value: "1"),
+            URLQueryItem(name: "skip_spend", value: "1")
+        ]
+        return components.url ?? usageURL
+    }
+
+    private func sendUsageRequest(url: URL, accessToken: String) async throws -> HTTPResponse {
         try await httpClient.send(
-            HTTPRequest(
-                method: "GET",
-                url: Self.usageURLWithResetGrants(config.usageURL),
-                headers: [
-                    "Authorization": "Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))",
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    "anthropic-beta": "oauth-2025-04-20",
-                    "User-Agent": Self.userAgent
-                ],
-                timeout: 10
-            )
+            HTTPRequest(method: "GET", url: url, headers: Self.claudeCodeHeaders(accessToken), timeout: 10)
         )
     }
 
-    static func usageURLWithResetGrants(_ usageURL: URL) -> URL {
-        guard var components = URLComponents(url: usageURL, resolvingAgainstBaseURL: false) else { return usageURL }
-        components.queryItems = (components.queryItems ?? []) + [URLQueryItem(name: "cedar_ember", value: "1")]
-        return components.url ?? usageURL
+    /// `POST /api/organizations/{org}/reset_rate_limits`, the request Claude Code sends to spend one reset
+    /// grant. `request_id` makes a retry idempotent. See docs/research/claude-reset-grant-claim.md.
+    func claimResetGrant(
+        accessToken: String, organizationUUID: String, grantID: String, requestID: String, config: ClaudeOAuthConfig
+    ) async throws -> HTTPResponse {
+        let body = try JSONSerialization.data(withJSONObject: [
+            "program": "cedar_ember", "grant_id": grantID, "request_id": requestID
+        ])
+        return try await httpClient.send(HTTPRequest(
+            method: "POST",
+            url: Self.resetClaimURL(config.usageURL, organizationUUID: organizationUUID),
+            headers: Self.claudeCodeHeaders(accessToken),
+            body: body,
+            timeout: 25
+        ))
+    }
+
+    static func resetClaimURL(_ usageURL: URL, organizationUUID: String) -> URL {
+        usageURL.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("organizations")
+            .appendingPathComponent(organizationUUID)
+            .appendingPathComponent("reset_rate_limits")
+    }
+
+    private static func claudeCodeHeaders(_ accessToken: String) -> [String: String] {
+        [
+            "Authorization": "Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))",
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "anthropic-beta": "oauth-2025-04-20",
+            "User-Agent": Self.userAgent
+        ]
     }
 
     /// `GET /api/oauth/profile`. Transport failures surface as `connectionFailed`; the status code is the

@@ -166,17 +166,23 @@ enum CursorUsageMapper {
                 ))
             }
         } else if isTeamAccount {
-            guard let limitCents = facts.limit else {
+            if let limitCents = facts.limit {
+                lines.append(.progress(
+                    label: "Total usage",
+                    used: ProviderParse.centsToDollars(planUsedCents),
+                    limit: ProviderParse.centsToDollars(limitCents),
+                    format: .dollars,
+                    resetsAt: cycle.resetsAt,
+                    periodDurationMs: cycle.periodDurationMs
+                ))
+            } else if let percent = facts.totalPercentUsed {
+                lines.append(.progress(
+                    label: "Total usage", used: percent, limit: 100, format: .percent,
+                    resetsAt: cycle.resetsAt, periodDurationMs: cycle.periodDurationMs
+                ))
+            } else {
                 throw CursorUsageError.requestBasedUnavailable("Cursor request-based usage data unavailable. Try again later.")
             }
-            lines.append(.progress(
-                label: "Total usage",
-                used: ProviderParse.centsToDollars(planUsedCents),
-                limit: ProviderParse.centsToDollars(limitCents),
-                format: .dollars,
-                resetsAt: cycle.resetsAt,
-                periodDurationMs: cycle.periodDurationMs
-            ))
         } else {
             lines.append(.progress(
                 label: "Total usage",
@@ -285,10 +291,10 @@ enum CursorUsageMapper {
 
         let normalizedPlan = planName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
 
-        if facts.planUsageUnusable && normalizedPlan == "enterprise" {
+        if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan == "enterprise" {
             return (true, "Enterprise usage data unavailable. Try again later.")
         }
-        if facts.planUsageUnusable && normalizedPlan == "team" {
+        if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan == "team" {
             return (true, "Team request-based usage data unavailable. Try again later.")
         }
         if facts.planUsageUnusable && !facts.hasTotalUsagePercent && normalizedPlan.isEmpty && planInfoUnavailable {
@@ -302,14 +308,14 @@ enum CursorUsageMapper {
         return (false, "")
     }
 
-    /// Append the shared Today / Yesterday / Last 30 Days spend tiles from Cursor's CSV rows. The rows
+    /// Append the shared Today / Yesterday / Last 30 Days spend tiles from Cursor's usage-event rows. The rows
     /// are aggregated into one local-calendar-day `DailyUsageSeries` and handed to `SpendTileMapper`
     /// — the same builder the Claude/Codex/Grok tiles use — so the output is identical apart from the
-    /// source note. Cursor's costs are calculated locally from the exported token counts, so the dollar
-    /// values carry the estimate icon. Callers only invoke this when the CSV fetched and parsed, so a
+    /// source note. Cursor's costs are calculated locally from the usage-event token counts, so the dollar
+    /// values carry the estimate icon. Callers only invoke this when usage history is complete, so a
     /// failure appends nothing and the tiles read "No data".
     ///
-    /// Model breakdown rows group by base model, not raw CSV slug: Cursor exports one slug per thinking
+    /// Model breakdown rows group by base model, not raw slug: Cursor reports one slug per thinking
     /// effort / fast combination (`claude-opus-4-8-thinking-max`, `gpt-5.5-extra-high-fast`, …), and a
     /// panel of near-duplicate rows hides the actual ranking. The supplement's alias rules already
     /// collapse those slugs to a canonical pricing key, and `-fast` canonicals fold into their base, so
@@ -317,7 +323,7 @@ enum CursorUsageMapper {
     /// family grouping). The raw slugs survive as `variants` — the per-effort breakdown the row's
     /// tooltip shows.
     static func appendSpendLines(
-        rows: [CursorUsageCSVRow],
+        rows: [CursorUsageRow],
         now: Date,
         pricing: ModelPricing,
         to lines: inout [MetricLine]
@@ -375,11 +381,11 @@ enum CursorUsageMapper {
         SpendTileMapper.appendTokenUsage(series, to: &lines, now: now, estimated: true,
                                          unknownModelsByDay: unknownModelsByDay,
                                          modelUsage: modelUsage,
-                                         modelSourceNote: "From your Cursor usage export")
-        // Cursor's tokens come from the server-exported usage CSV, not a local CLI log, so the trend
+                                         modelSourceNote: "From your Cursor usage history")
+        // Cursor's tokens come from the server usage history, not a local CLI log, so the trend
         // note names that source rather than the "estimated from local logs" line the log-scanning
         // providers use. Tokens are measured either way.
-        SpendTileMapper.appendUsageTrend(series, to: &lines, now: now, note: "From your Cursor usage export")
+        SpendTileMapper.appendUsageTrend(series, to: &lines, now: now, note: "From your Cursor usage history")
         return ProviderUsageHistory(
             series: series,
             modelUsage: modelUsage,
@@ -450,6 +456,60 @@ enum CursorUsageMapper {
             Date(timeIntervalSince1970: cycleEnd / 1000),
             Int(cycleEnd - cycleStart)
         )
+    }
+
+    /// Membership values that identify an org-billed Cursor seat.
+    static let orgMembershipTypes: Set<String> = ["enterprise", "team"]
+
+    /// Plan name for request/Enterprise fallback routing. Org membership may promote the route,
+    /// but personal memberships must not fill an empty GetPlanInfo result and disable the
+    /// unknown-plan REST fallback.
+    static func routingPlanName(planInfoName: String?, membershipType: String?) -> String? {
+        let membership = normalizedMembership(membershipType)
+        if let membership, orgMembershipTypes.contains(membership) {
+            return membership
+        }
+        return planInfoName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+    }
+
+    /// Badge / display plan. Prefer org billing membership over GetPlanInfo when it still says Pro.
+    static func resolvedPlanName(planInfoName: String?, membershipType: String?) -> String? {
+        let membership = normalizedMembership(membershipType)
+        let planInfo = planInfoName?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+        if let membership, orgMembershipTypes.contains(membership),
+           planInfo == nil || ["pro", "pro plan"].contains(planInfo?.lowercased() ?? "") {
+            return membership
+        }
+        return planInfo ?? membership
+    }
+
+    static func resolvedPlanLabel(planInfoName: String?, membershipType: String?) -> String? {
+        planLabel(resolvedPlanName(planInfoName: planInfoName, membershipType: membershipType))
+    }
+
+    /// Prefer local org membership when present; otherwise take a live org membership from
+    /// usage-summary over a stale local personal membership.
+    static func preferredMembership(local: String?, summary: String?) -> String? {
+        let localMembership = normalizedMembership(local)
+        let summaryMembership = normalizedMembership(summary)
+        if let localMembership, orgMembershipTypes.contains(localMembership) {
+            return localMembership
+        }
+        if let summaryMembership, orgMembershipTypes.contains(summaryMembership) {
+            return summaryMembership
+        }
+        return localMembership ?? summaryMembership
+    }
+
+    private static func normalizedMembership(_ value: String?) -> String? {
+        value?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .nilIfEmpty
     }
 
     private static func planLabel(_ value: String?) -> String? {
